@@ -7,7 +7,7 @@ A full-featured cold calling CRM dashboard built for solo sales reps. Manage lea
 - **Lead Management** — Import leads from Excel/CSV, add manually, or drop files into the inbox for auto-import. Duplicate detection by company name.
 - **Multi-Contact Support** — Track multiple contacts per company with primary contact designation.
 - **Call Logging** — Log call outcomes with one click (or keyboard shortcut). 9 outcomes including callback scheduling, with automatic status updates.
-- **Power Dial Mode** — Auto-advance to the next lead after logging a call for uninterrupted calling sessions.
+- **Power Dial Mode** — Auto-advance to the next lead after logging a call for uninterrupted calling sessions. Celebration animation when you book a meeting.
 - **Smart Next Lead** — Intelligent lead prioritization: overdue callbacks > new leads > no answer > interested.
 - **Call Scripts & Objection Handling** — Built-in manuscript panel with Swedish cold-calling templates. Floating script overlay for reference during calls.
 - **Lists & Segmentation** — Organize leads into color-coded lists. Multi-select mode for bulk operations.
