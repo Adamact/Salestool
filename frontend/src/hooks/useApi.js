@@ -95,9 +95,21 @@ const api = {
     return request('/leads/callbacks');
   },
 
-  getAnalytics(period) {
-    const params = period ? `?period=${period}` : '';
-    return request(`/leads/analytics${params}`);
+  exportLeads({ status, listId } = {}) {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (listId) params.set('list_id', listId);
+    const qs = params.toString();
+    // Trigger file download
+    window.open(`${BASE}/leads/export${qs ? '?' + qs : ''}`, '_blank');
+  },
+
+  getAnalytics({ startDate, endDate } = {}) {
+    const params = new URLSearchParams();
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const qs = params.toString();
+    return request(`/leads/analytics${qs ? '?' + qs : ''}`);
   },
 
   getContacts(leadId) {

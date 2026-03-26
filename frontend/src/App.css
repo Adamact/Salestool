@@ -2909,6 +2909,63 @@ body {
   color: var(--text-primary);
 }
 
+.analytics__date-range {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.analytics__date-inputs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.analytics__date-inputs label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.analytics__date-inputs input[type="date"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+}
+
+.analytics__date-presets {
+  display: flex;
+  gap: 4px;
+}
+
+.analytics__date-presets button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.analytics__date-presets button:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+
+.analytics__date-presets button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* Funnel */
 .analytics__funnel {
   display: flex;
@@ -3063,4 +3120,59 @@ body {
 .analytics__duration-count {
   color: var(--text-secondary);
   font-size: 11px;
+}
+
+/* Flame celebration animation */
+.flame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.flame-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(251, 146, 60, 0.9), 0 0 40px rgba(251, 146, 60, 0.6), 0 0 80px rgba(239, 68, 68, 0.4);
+  letter-spacing: 4px;
+  animation: flame-text-in 0.4s ease-out forwards, flame-text-out 0.5s 1.8s ease-in forwards;
+}
+
+@keyframes flame-text-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes flame-text-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+.flame-particle {
+  position: absolute;
+  animation: flame-rise ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes flame-rise {
+  0% {
+    transform: translateY(var(--start-y)) translateX(0) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(var(--end-y)) translateX(var(--drift)) scale(1.2);
+    opacity: 0;
+  }
 }

@@ -4,18 +4,6 @@ import LeadCard from './LeadCard';
 import CallbackQueue from './CallbackQueue';
 import { STATUS_FILTER_OPTIONS as STATUS_OPTIONS } from '../constants/statuses';
 
-const _REMOVED = [
-  { value: 'alla', label: 'Alla' },
-  { value: 'new', label: 'Ny' },
-  { value: 'no_answer', label: 'Inget svar' },
-  { value: 'callback', label: '\u00c5terring' },
-  { value: 'interested', label: 'Intresserad' },
-  { value: 'not_interested', label: 'Ej intresserad' },
-  { value: 'booked_meeting', label: 'Bokat m\u00f6te' },
-  { value: 'already_customer', label: 'Redan kund' },
-  { value: 'sent_email', label: 'Skickat mejl' },
-  { value: 'sent_followup', label: 'Skickat uppf\u00f6ljningsmejl' },
-];
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sortera...' },
@@ -197,6 +185,13 @@ export default function Sidebar({
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </button>
+          <button className="sidebar__import-btn" onClick={() => api.exportLeads({ status: statusFilter !== 'alla' ? statusFilter : undefined, listId: activeListId || undefined })} title="Exportera CSV">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           </button>
         </div>

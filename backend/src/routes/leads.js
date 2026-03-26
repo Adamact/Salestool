@@ -4,42 +4,12 @@ import * as XLSX from 'xlsx';
 import path from 'path';
 import fs from 'fs';
 import db from '../database.js';
+import { detectColumnMapping } from '../utils/columnMapping.js';
 
 const router = Router();
 
 // Configure multer for file uploads (temp directory)
 const upload = multer({ dest: path.join(process.cwd(), 'data', 'uploads') });
-
-// Column name mapping - maps common Swedish/English header names to DB fields
-const COLUMN_MAP = {
-  company: ['company', 'företag', 'foretag', 'firma', 'bolag'],
-  contact_name: ['contact_name', 'name', 'namn', 'kontakt', 'kontaktperson', 'contact'],
-  phone: ['phone', 'telefon', 'tel', 'telefonnummer', 'mobilnummer', 'mobil'],
-  email: ['email', 'e-post', 'epost', 'e-mail', 'mail'],
-  title: ['title', 'titel', 'befattning', 'roll', 'role', 'position'],
-  industry: ['industry', 'bransch', 'sektor', 'sector'],
-  city: ['city', 'stad', 'ort', 'postort', 'kommun'],
-};
-
-function detectColumnMapping(headers) {
-  const mapping = {};
-  const mappedHeaders = new Set();
-
-  for (const [dbField, aliases] of Object.entries(COLUMN_MAP)) {
-    for (const header of headers) {
-      const normalized = header.toLowerCase().trim();
-      if (aliases.includes(normalized)) {
-        mapping[header] = dbField;
-        mappedHeaders.add(header);
-        break;
-      }
-    }
-  }
-
-  // Remaining headers go into custom_fields
-  const customHeaders = headers.filter(h => !mappedHeaders.has(h));
-  return { mapping, customHeaders };
-}
 
 // GET /api/leads/stats - Return counts by status + session stats
 router.get('/stats', (req, res) => {
@@ -150,29 +120,34 @@ router.get('/callbacks', (req, res) => {
 // GET /api/leads/analytics - Session analytics
 router.get('/analytics', (req, res) => {
   try {
-    // Calls by hour today
+    const { start_date, end_date } = req.query;
+    // Default: start_date = today, end_date = today
+    const startDate = start_date || new Date().toISOString().split('T')[0];
+    const endDate = end_date || new Date().toISOString().split('T')[0];
+
+    // Calls by hour in date range
     const callsByHour = db.prepare(`
       SELECT strftime('%H', called_at) as hour, COUNT(*) as count
       FROM call_history
-      WHERE date(called_at) = date('now')
+      WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
       GROUP BY hour ORDER BY hour
-    `).all();
+    `).all({ startDate, endDate });
 
-    // Outcome distribution today
+    // Outcome distribution in date range
     const outcomeDistribution = db.prepare(`
       SELECT outcome, COUNT(*) as count
       FROM call_history
-      WHERE date(called_at) = date('now')
+      WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
       GROUP BY outcome ORDER BY count DESC
-    `).all();
+    `).all({ startDate, endDate });
 
-    // Average duration by outcome
+    // Average duration by outcome in date range
     const avgDuration = db.prepare(`
       SELECT outcome, ROUND(AVG(duration_seconds)) as avg_seconds, COUNT(*) as count
       FROM call_history
-      WHERE duration_seconds IS NOT NULL AND date(called_at) = date('now')
+      WHERE duration_seconds IS NOT NULL AND date(called_at) >= @startDate AND date(called_at) <= @endDate
       GROUP BY outcome
-    `).all();
+    `).all({ startDate, endDate });
 
     // Conversion funnel (all time)
     const funnel = db.prepare(`
@@ -182,13 +157,13 @@ router.get('/analytics', (req, res) => {
         (SELECT COUNT(*) FROM leads WHERE status = 'booked_meeting') as booked_meeting
     `).get();
 
-    // Calls per day (last 7 days)
+    // Calls per day in date range
     const callsPerDay = db.prepare(`
       SELECT date(called_at) as day, COUNT(*) as count
       FROM call_history
-      WHERE called_at >= date('now', '-7 days')
+      WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
       GROUP BY day ORDER BY day
-    `).all();
+    `).all({ startDate, endDate });
 
     res.json({
       calls_by_hour: callsByHour,
@@ -197,6 +172,58 @@ router.get('/analytics', (req, res) => {
       funnel,
       calls_per_day: callsPerDay,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/leads/export - Export leads as CSV
+router.get('/export', (req, res) => {
+  try {
+    const { status, list_id } = req.query;
+    let rows;
+
+    if (list_id) {
+      const stmt = status
+        ? db.prepare(`
+            SELECT l.* FROM leads l
+            INNER JOIN list_leads ll ON ll.lead_id = l.id
+            WHERE ll.list_id = @list_id AND l.status = @status
+            ORDER BY ll.sort_order
+          `)
+        : db.prepare(`
+            SELECT l.* FROM leads l
+            INNER JOIN list_leads ll ON ll.lead_id = l.id
+            WHERE ll.list_id = @list_id
+            ORDER BY ll.sort_order
+          `);
+      rows = stmt.all({ list_id: parseInt(list_id), ...(status ? { status } : {}) });
+    } else {
+      const stmt = status
+        ? db.prepare('SELECT * FROM leads WHERE status = ? ORDER BY company')
+        : db.prepare('SELECT * FROM leads ORDER BY company');
+      rows = status ? stmt.all(status) : stmt.all();
+    }
+
+    // Build CSV
+    const columns = ['company', 'contact_name', 'phone', 'email', 'title', 'industry', 'city', 'status'];
+    const csvRows = [columns.join(';')];
+
+    for (const row of rows) {
+      const values = columns.map((col) => {
+        const val = String(row[col] || '').replace(/"/g, '""');
+        return `"${val}"`;
+      });
+      csvRows.push(values.join(';'));
+    }
+
+    const csv = csvRows.join('\n');
+    const filename = `leads_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // BOM for Excel to detect UTF-8
+    res.send('\uFEFF' + csv);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

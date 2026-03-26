@@ -8,6 +8,7 @@ import contactsRouter from './routes/contacts.js';
 import listsRouter from './routes/lists.js';
 import calendarRouter from './routes/calendar.js';
 import { startCSVWatcher } from './csvWatcher.js';
+import { createBackup } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Database backup
+app.post('/api/backup', (req, res) => {
+  try {
+    const backupPath = createBackup();
+    res.json({ message: 'Backup created', path: backupPath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Auto-seed manuscript on first startup
 const seeded = seedManuscript();
 if (seeded) {
@@ -38,4 +49,12 @@ if (seeded) {
 app.listen(PORT, () => {
   console.log(`Salestool backend running on http://localhost:${PORT}`);
   startCSVWatcher();
+
+  // Auto-backup on startup
+  try {
+    createBackup();
+    console.log('Database backup created on startup.');
+  } catch (err) {
+    console.error('Failed to create startup backup:', err.message);
+  }
 });

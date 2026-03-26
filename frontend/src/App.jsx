@@ -11,6 +11,7 @@ import AddLeadModal from './components/AddLeadModal';
 import FloatingScript from './components/FloatingScript';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
+import FlameAnimation from './components/FlameAnimation';
 
 export default function App() {
   const api = useApi();
@@ -28,6 +29,7 @@ export default function App() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [powerDialMode, setPowerDialMode] = useState(false);
+  const [showFlame, setShowFlame] = useState(false);
   const leadsRef = useRef(leads);
   leadsRef.current = leads;
 
@@ -114,6 +116,9 @@ export default function App() {
       loadLeads();
       setStatsKey((k) => k + 1);
       setShowLogCall(false);
+      if (outcome === 'booked_meeting') {
+        setShowFlame(true);
+      }
       // Auto-advance to next lead
       const currentLeads = leadsRef.current;
       const currentIndex = currentLeads.findIndex((l) => l.id === selectedLeadId);
@@ -276,6 +281,8 @@ export default function App() {
           onClose={() => setShowLogCall(false)}
         />
       )}
+
+      {showFlame && <FlameAnimation onComplete={() => setShowFlame(false)} />}
 
       {showImport && (
         <ExcelImport

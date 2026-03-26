@@ -1,6 +1,8 @@
 node_modules/
 backend/data/
 *.db
+*.db-shm
+*.db-wal
 .env
 dist/
 .DS_Store

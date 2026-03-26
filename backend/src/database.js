@@ -126,4 +126,30 @@ db.exec(`
   WHERE company IS NOT NULL AND TRIM(company) != ''
 `);
 
+// Backup utility
+const backupDir = path.join(dataDir, 'backups');
+
+export function createBackup() {
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  const backupPath = path.join(backupDir, `salestool_${timestamp}.db`);
+
+  db.backup(backupPath);
+
+  // Keep only the last 7 backups
+  const backups = fs.readdirSync(backupDir)
+    .filter(f => f.startsWith('salestool_') && f.endsWith('.db'))
+    .sort()
+    .reverse();
+
+  for (const old of backups.slice(7)) {
+    fs.unlinkSync(path.join(backupDir, old));
+  }
+
+  return backupPath;
+}
+
 export default db;
