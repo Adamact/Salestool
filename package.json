@@ -1,0 +1,15 @@
+{
+  "name": "salestool",
+  "version": "1.0.0",
+  "description": "Cold-calling sales tool",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && node src/server.js",
+    "dev:frontend": "cd frontend && npx vite",
+    "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "npm run dev"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

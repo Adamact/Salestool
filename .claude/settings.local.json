@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(py|js|json|txt|xlsx?|csv\\)$\")",
+      "Bash(npm install:*)",
+      "Bash(timeout 5 node src/server.js)",
+      "Bash(npx vite:*)",
+      "Bash(node -e \":*)",
+      "Bash(awk:*)",
+      "Bash(node import-leads.js)",
+      "Bash(curl:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python -m json.tool)",
+      "Bash(xxd)",
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(grep -E \"\\\\.jsx$\")",
+      "Bash(npx -y acorn --ecma2020 --module --allow-import-export-everywhere src/components/ManuscriptSplitPanel.jsx)",
+      "Bash(find C:UsersadamaDocumentsGithubSalestoolfrontendsrc -type f -name *.jsx -o -name *.js)",
+      "Bash(find C:UsersadamaDocumentsGithubSalestool -maxdepth 2 -name README* -o -name IMPORT* -o -name *.md)",
+      "Bash(grep -r \"Kontaktperson\\\\|kontakt\" /c/Users/adama/Documents/Github/Salestool/backend/data --include=*.csv --include=*.tsv)",
+      "Bash(find /c/Users/adama/Documents/Github/Salestool -type f -name .env* -o -name *.env)",
+      "Bash(find /c/Users/adama/Documents/Github/Salestool -type f \\\\\\(-name *.json -o -name *.js -o -name *.ts -o -name *.py -o -name *.config.* \\\\\\) ! -path */node_modules/* ! -path */.claude/*)",
+      "Bash(grep -r \"localhost\\\\|127.0.0.1\\\\|192.168\\\\|10\\\\.\" /c/Users/adama/Documents/Github/Salestool --include=*.js --include=*.jsx --include=*.json --exclude-dir=node_modules --exclude-dir=dist)",
+      "Bash(grep -r \"password\\\\|pwd\\\\|secret\\\\|key\\\\|token\\\\|credential\" /c/Users/adama/Documents/Github/Salestool --include=*.js --include=*.jsx --include=*.json --exclude-dir=node_modules --exclude-dir=dist --exclude=*lock.json)",
+      "Bash(find /c/Users/adama/Documents/Github/Salestool -name *.env* -o -name *.config.* -o -name *secret* -o -name *credential*)"
+    ]
+  }
+}
