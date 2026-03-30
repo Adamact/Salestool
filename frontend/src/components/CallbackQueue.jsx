@@ -12,7 +12,7 @@ export default function CallbackQueue({ onSelectLead }) {
     function load() {
       api.getCallbacks()
         .then((data) => { if (mounted) setCallbacks(Array.isArray(data) ? data : []); })
-        .catch(() => { if (mounted) setCallbacks([]); });
+        .catch((err) => { console.error('Failed to load callbacks:', err); if (mounted) setCallbacks([]); });
     }
 
     load();
@@ -74,29 +74,32 @@ export default function CallbackQueue({ onSelectLead }) {
   };
 
   return (
-    <div className="callback-queue">
-      <button className="callback-queue__header" onClick={() => setCollapsed((c) => !c)}>
-        <span className="callback-queue__title">
+    <div className="mx-2 mb-2">
+      <button
+        className="w-full flex justify-between items-center px-3 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 text-sm font-medium hover:bg-blue-500/15 transition-colors"
+        onClick={() => setCollapsed((c) => !c)}
+      >
+        <span className="flex items-center gap-1.5">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <polyline points="12 6 12 12 16 14"/>
           </svg>
           Återring ({callbacks.length})
         </span>
-        <span className="callback-queue__chevron">{collapsed ? '\u25BC' : '\u25B2'}</span>
+        <span>{collapsed ? '\u25BC' : '\u25B2'}</span>
       </button>
       {!collapsed && (
-        <div className="callback-queue__list">
+        <div className="mt-1.5 space-y-1">
           {callbacks.map((cb) => {
             const isOverdue = cb.callback_time && new Date(cb.callback_time + 'Z') <= now;
             return (
               <button
                 key={cb.id}
-                className={`callback-queue__item ${isOverdue ? 'callback-queue__item--overdue' : ''}`}
+                className={`w-full flex justify-between items-center px-3 py-2 rounded text-xs hover:bg-white/5 transition-colors ${isOverdue ? 'text-red-400' : ''}`}
                 onClick={() => onSelectLead(cb.id)}
               >
-                <span className="callback-queue__company">{cb.company || 'Okänt'}</span>
-                <span className="callback-queue__time">
+                <span className="text-sidebar-text-bright truncate">{cb.company || 'Okänt'}</span>
+                <span className={isOverdue ? 'text-red-400' : 'text-slate-500'}>
                   {cb.callback_time ? formatTime(cb.callback_time) : 'Ingen tid'}
                 </span>
               </button>

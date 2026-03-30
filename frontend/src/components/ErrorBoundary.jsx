@@ -17,30 +17,12 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          padding: '2rem',
-          textAlign: 'center',
-          color: '#64748b',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '200px',
-          gap: '1rem',
-        }}>
-          <h3 style={{ color: '#ef4444', margin: 0 }}>Något gick fel</h3>
-          <p style={{ margin: 0 }}>{this.state.error?.message || 'Ett oväntat fel uppstod.'}</p>
+        <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center gap-4">
+          <h3 className="text-red-500 font-semibold text-base">Något gick fel</h3>
+          <p className="text-sm text-slate-500">{this.state.error?.message || 'Ett oväntat fel uppstod.'}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            style={{
-              padding: '0.5rem 1.5rem',
-              background: '#3b82f6',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-            }}
+            className="px-5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
           >
             Försök igen
           </button>

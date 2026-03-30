@@ -100,7 +100,9 @@ function importCSV(filePath) {
         try {
           const custom = JSON.parse(lead.custom_fields);
           contactLinkedin = custom.linkedin || null;
-        } catch {}
+        } catch (err) {
+          console.warn(`[CSV Watcher] Failed to parse custom_fields for lead "${lead.company}":`, err.message);
+        }
       }
 
       if (contactName || contactPhone || contactEmail) {

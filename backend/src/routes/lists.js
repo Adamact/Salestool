@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../database.js';
+import { validateId } from '../middleware/validateId.js';
 
 const router = Router();
 
@@ -58,7 +59,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/lists/:id - Update list name/description/color
-router.put('/:id', (req, res) => {
+router.put('/:id', validateId('id'), (req, res) => {
   try {
     const list = db.prepare('SELECT * FROM lists WHERE id = ?').get(req.params.id);
     if (!list) {
@@ -86,7 +87,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/lists/:id - Delete a list (cascade deletes list_leads)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateId('id'), (req, res) => {
   try {
     const list = db.prepare('SELECT * FROM lists WHERE id = ?').get(req.params.id);
     if (!list) {
@@ -101,7 +102,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // GET /api/lists/:id/leads - Get all leads in a list, ordered by sort_order
-router.get('/:id/leads', (req, res) => {
+router.get('/:id/leads', validateId('id'), (req, res) => {
   try {
     const list = db.prepare('SELECT * FROM lists WHERE id = ?').get(req.params.id);
     if (!list) {
@@ -123,7 +124,7 @@ router.get('/:id/leads', (req, res) => {
 });
 
 // POST /api/lists/:id/leads - Add one or more leads to the list
-router.post('/:id/leads', (req, res) => {
+router.post('/:id/leads', validateId('id'), (req, res) => {
   try {
     const list = db.prepare('SELECT * FROM lists WHERE id = ?').get(req.params.id);
     if (!list) {
@@ -133,6 +134,11 @@ router.post('/:id/leads', (req, res) => {
     const { lead_ids } = req.body;
     if (!Array.isArray(lead_ids) || lead_ids.length === 0) {
       return res.status(400).json({ error: 'lead_ids must be a non-empty array' });
+    }
+
+    const safeIds = lead_ids.filter(id => Number.isInteger(id) && id > 0);
+    if (safeIds.length === 0) {
+      return res.status(400).json({ error: 'lead_ids must contain valid positive integers' });
     }
 
     // Get the current max sort_order for this list
@@ -148,7 +154,7 @@ router.post('/:id/leads', (req, res) => {
     );
 
     const addLeads = db.transaction(() => {
-      for (const leadId of lead_ids) {
+      for (const leadId of safeIds) {
         const result = insert.run(req.params.id, leadId, nextOrder);
         if (result.changes > 0) {
           added++;
@@ -165,7 +171,7 @@ router.post('/:id/leads', (req, res) => {
 });
 
 // DELETE /api/lists/:id/leads/:leadId - Remove a lead from the list
-router.delete('/:id/leads/:leadId', (req, res) => {
+router.delete('/:id/leads/:leadId', validateId('id', 'leadId'), (req, res) => {
   try {
     const result = db.prepare(
       'DELETE FROM list_leads WHERE list_id = ? AND lead_id = ?'
@@ -182,7 +188,7 @@ router.delete('/:id/leads/:leadId', (req, res) => {
 });
 
 // PUT /api/lists/:id/leads/reorder - Reorder leads in the list
-router.put('/:id/leads/reorder', (req, res) => {
+router.put('/:id/leads/reorder', validateId('id'), (req, res) => {
   try {
     const list = db.prepare('SELECT * FROM lists WHERE id = ?').get(req.params.id);
     if (!list) {
@@ -212,7 +218,7 @@ router.put('/:id/leads/reorder', (req, res) => {
 });
 
 // GET /api/lists/for-lead/:leadId - Get all lists that contain a specific lead
-router.get('/for-lead/:leadId', (req, res) => {
+router.get('/for-lead/:leadId', validateId('leadId'), (req, res) => {
   try {
     const lists = db.prepare(`
       SELECT l.*, ll.sort_order, ll.added_at as list_added_at

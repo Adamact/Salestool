@@ -4,11 +4,11 @@ import { useApi } from '../hooks/useApi';
 const EMPTY_FORM = { title: '', content: '' };
 
 const SECTION_TYPES = [
-  { value: 'opening', label: '\u00d6ppning' },
-  { value: 'value_prop', label: 'V\u00e4rdeerbjudande' },
-  { value: 'questions', label: 'Fr\u00e5gor' },
+  { value: 'opening', label: 'Öppning' },
+  { value: 'value_prop', label: 'Värdeerbjudande' },
+  { value: 'questions', label: 'Frågor' },
   { value: 'closing', label: 'Avslut' },
-  { value: 'other', label: '\u00d6vrigt' },
+  { value: 'other', label: 'Övrigt' },
 ];
 
 function ScriptSide({ manuscript, onManuscriptChange }) {
@@ -76,32 +76,32 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
   };
 
   return (
-    <div className="script-panel">
-      <h3 className="split-panel__heading">Manus</h3>
+    <div>
+      <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">Manus</h3>
 
       {sections.length === 0 && !showAdd && (
-        <p className="script-panel__empty">Inget manus har lagts till {'\u00e4'}nnu.</p>
+        <p className="text-sm text-slate-400 py-4">Inget manus har lagts till ännu.</p>
       )}
 
       {sections.map((section) => (
-        <div key={section.id} className="script-section">
+        <div key={section.id} className="rounded-lg border border-slate-100 p-4 mb-3">
           {editingId === section.id ? (
-            <div className="manuscript-edit">
+            <div className="space-y-3">
               <input
-                className="manuscript-edit__title"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none"
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="Titel"
               />
               <textarea
-                className="manuscript-edit__content"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none resize-y"
                 value={form.content}
                 onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                placeholder="Skriv ditt manus h{'\u00e4'}r..."
+                placeholder="Skriv ditt manus här..."
                 rows={6}
               />
-              <div className="manuscript-edit__actions">
+              <div className="flex gap-2">
                 <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
                   {saving ? 'Sparar...' : 'Spara'}
                 </button>
@@ -110,19 +110,19 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
             </div>
           ) : (
             <>
-              <div className="script-section__header">
-                <div className="script-section__title-row">
-                  <span className="script-section__type-tag">{getTypeLabel(section.section_type)}</span>
-                  {section.title && <h4 className="script-section__title">{section.title}</h4>}
+              <div className="flex justify-between items-start">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/10 text-accent px-2 py-0.5 rounded-full w-fit">{getTypeLabel(section.section_type)}</span>
+                  {section.title && <h4 className="text-sm font-medium text-slate-900">{section.title}</h4>}
                 </div>
-                <div className="script-section__btns">
-                  <button className="manuscript-icon-btn" onClick={() => handleEdit(section)} title="Redigera">
+                <div className="flex gap-1">
+                  <button className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100" onClick={() => handleEdit(section)} title="Redigera">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
                   </button>
-                  <button className="manuscript-icon-btn manuscript-icon-btn--danger" onClick={() => handleDelete(section.id)} title="Ta bort">
+                  <button className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDelete(section.id)} title="Ta bort">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -130,16 +130,16 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
                   </button>
                 </div>
               </div>
-              <div className="script-section__body">{section.content}</div>
+              <div className="text-sm text-slate-600 whitespace-pre-wrap mt-2">{section.content}</div>
             </>
           )}
         </div>
       ))}
 
       {showAdd && (
-        <div className="manuscript-edit">
+        <div className="space-y-3">
           <select
-            className="manuscript-edit__type-select"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
             value={newType}
             onChange={(e) => setNewType(e.target.value)}
           >
@@ -148,7 +148,7 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
             ))}
           </select>
           <input
-            className="manuscript-edit__title"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none"
             type="text"
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -156,15 +156,15 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
             autoFocus
           />
           <textarea
-            className="manuscript-edit__content"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none resize-y"
             value={form.content}
             onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-            placeholder="Skriv ditt manus h{'\u00e4'}r..."
+            placeholder="Skriv ditt manus här..."
             rows={6}
           />
-          <div className="manuscript-edit__actions">
+          <div className="flex gap-2">
             <button className="btn btn--primary" onClick={handleSave} disabled={saving || !form.title.trim() || !form.content.trim()}>
-              {saving ? 'Sparar...' : 'L\u00e4gg till'}
+              {saving ? 'Sparar...' : 'Lägg till'}
             </button>
             <button className="btn btn--secondary" onClick={handleCancel}>Avbryt</button>
           </div>
@@ -173,10 +173,10 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
 
       {!showAdd && !editingId && (
         <button
-          className="manuscript-add-btn"
+          className="w-full border-2 border-dashed border-slate-200 rounded-lg py-2.5 text-sm text-slate-500 hover:border-accent hover:text-accent transition-colors"
           onClick={() => { setShowAdd(true); setForm(EMPTY_FORM); }}
         >
-          + L{'\u00e4'}gg till manus
+          + Lägg till manus
         </button>
       )}
     </div>
@@ -247,11 +247,11 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
   };
 
   return (
-    <div className="objections-panel">
-      <h3 className="split-panel__heading">Inv{'\u00e4'}ndningar</h3>
+    <div>
+      <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">Invändningar</h3>
 
       {objections.length === 0 && !showAdd && (
-        <p className="objections-panel__empty">Inga inv{'\u00e4'}ndningar har lagts till {'\u00e4'}nnu.</p>
+        <p className="text-sm text-slate-400 py-4">Inga invändningar har lagts till ännu.</p>
       )}
 
       {objections.map((obj) => {
@@ -259,23 +259,23 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
         const isEditing = editingId === obj.id;
 
         return (
-          <div key={obj.id} className={`objection-card ${isOpen ? 'objection-card--open' : ''}`}>
+          <div key={obj.id} className="rounded-lg border border-slate-100 mb-2">
             <button
-              className="objection-card__header"
+              className="w-full flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-slate-50 text-left"
               onClick={() => { if (!isEditing) setOpenId(isOpen ? null : obj.id); }}
               aria-expanded={isOpen}
             >
-              <span className="objection-card__title">{isEditing ? form.title || obj.title : obj.title}</span>
-              <span className="objection-card__header-right">
+              <span className="text-sm font-medium text-slate-900">{isEditing ? form.title || obj.title : obj.title}</span>
+              <span className="flex items-center gap-1">
                 {isOpen && !isEditing && (
                   <>
-                    <span className="manuscript-icon-btn manuscript-icon-btn--inline" onClick={(e) => handleEdit(e, obj)} title="Redigera">
+                    <span className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100" onClick={(e) => handleEdit(e, obj)} title="Redigera">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
                     </span>
-                    <span className="manuscript-icon-btn manuscript-icon-btn--inline manuscript-icon-btn--danger" onClick={(e) => handleDelete(e, obj.id)} title="Ta bort">
+                    <span className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={(e) => handleDelete(e, obj.id)} title="Ta bort">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6" />
                         <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -283,28 +283,28 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
                     </span>
                   </>
                 )}
-                <span className="objection-card__chevron">{isOpen ? '\u25B2' : '\u25BC'}</span>
+                <span className="text-slate-400 text-xs">{isOpen ? '\u25B2' : '\u25BC'}</span>
               </span>
             </button>
             {isOpen && (
               isEditing ? (
-                <div className="objection-card__edit">
-                  <div className="manuscript-edit">
+                <div className="px-4 pb-3">
+                  <div className="space-y-3">
                     <input
-                      className="manuscript-edit__title"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none"
                       type="text"
                       value={form.title}
                       onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                      placeholder="Inv\u00e4ndning, t.ex. 'Vi har redan en leverant\u00f6r'"
+                      placeholder="Invändning, t.ex. 'Vi har redan en leverantör'"
                     />
                     <textarea
-                      className="manuscript-edit__content"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none resize-y"
                       value={form.content}
                       onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                      placeholder="Skriv ditt svar p\u00e5 inv\u00e4ndningen..."
+                      placeholder="Skriv ditt svar på invändningen..."
                       rows={4}
                     />
-                    <div className="manuscript-edit__actions">
+                    <div className="flex gap-2">
                       <button className="btn btn--primary" onClick={handleSave} disabled={saving || !form.title.trim() || !form.content.trim()}>
                         {saving ? 'Sparar...' : 'Spara'}
                       </button>
@@ -313,7 +313,7 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
                   </div>
                 </div>
               ) : (
-                <div className="objection-card__body">{obj.content}</div>
+                <div className="px-4 pb-3 text-sm text-slate-600 whitespace-pre-wrap">{obj.content}</div>
               )
             )}
           </div>
@@ -321,27 +321,27 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
       })}
 
       {showAdd && (
-        <div className="objection-card objection-card--open">
-          <div className="objection-card__edit">
-            <div className="manuscript-edit">
+        <div className="rounded-lg border border-slate-100 mb-2">
+          <div className="px-4 py-3">
+            <div className="space-y-3">
               <input
-                className="manuscript-edit__title"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none"
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="Inv\u00e4ndning, t.ex. 'Det l\u00e5ter bra men...'"
+                placeholder="Invändning, t.ex. 'Det låter bra men...'"
                 autoFocus
               />
               <textarea
-                className="manuscript-edit__content"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-accent/30 focus:outline-none resize-y"
                 value={form.content}
                 onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                placeholder="Skriv ditt svar p\u00e5 inv\u00e4ndningen..."
+                placeholder="Skriv ditt svar på invändningen..."
                 rows={4}
               />
-              <div className="manuscript-edit__actions">
+              <div className="flex gap-2">
                 <button className="btn btn--primary" onClick={handleSave} disabled={saving || !form.title.trim() || !form.content.trim()}>
-                  {saving ? 'Sparar...' : 'L\u00e4gg till'}
+                  {saving ? 'Sparar...' : 'Lägg till'}
                 </button>
                 <button className="btn btn--secondary" onClick={handleCancel}>Avbryt</button>
               </div>
@@ -352,25 +352,124 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
 
       {!showAdd && !editingId && (
         <button
-          className="manuscript-add-btn"
+          className="w-full border-2 border-dashed border-slate-200 rounded-lg py-2.5 text-sm text-slate-500 hover:border-accent hover:text-accent transition-colors"
           onClick={() => { setShowAdd(true); setForm(EMPTY_FORM); }}
         >
-          + L{'\u00e4'}gg till inv{'\u00e4'}ndning
+          + Lägg till invändning
         </button>
       )}
     </div>
   );
 }
 
-export default function ManuscriptSplitPanel({ manuscript, onManuscriptChange }) {
+function ManuscriptGroupSelector({ manuscriptGroups, activeManuscriptId, onManuscriptGroupChange, onActiveManuscriptChange }) {
+  const api = useApi();
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleSwitch = async (e) => {
+    const id = Number(e.target.value);
+    try {
+      await api.activateManuscriptGroup(id);
+      onActiveManuscriptChange(id);
+      if (onManuscriptGroupChange) onManuscriptGroupChange();
+    } catch (err) {
+      console.error('Failed to switch manuscript:', err);
+    }
+  };
+
+  const handleCreate = async () => {
+    const name = window.prompt('Namn på nytt manus:');
+    if (!name || !name.trim()) return;
+    try {
+      const group = await api.createManuscriptGroup({ name: name.trim() });
+      await api.activateManuscriptGroup(group.id);
+      onActiveManuscriptChange(group.id);
+      if (onManuscriptGroupChange) onManuscriptGroupChange();
+    } catch (err) {
+      console.error('Failed to create manuscript group:', err);
+    }
+  };
+
+  const handleRename = async () => {
+    setShowMenu(false);
+    const current = manuscriptGroups.find((g) => g.id === activeManuscriptId);
+    const name = window.prompt('Nytt namn:', current?.name || '');
+    if (!name || !name.trim()) return;
+    try {
+      await api.updateManuscriptGroup(activeManuscriptId, { name: name.trim() });
+      if (onManuscriptGroupChange) onManuscriptGroupChange();
+    } catch (err) {
+      console.error('Failed to rename manuscript group:', err);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    setShowMenu(false);
+    try {
+      const group = await api.duplicateManuscriptGroup(activeManuscriptId);
+      await api.activateManuscriptGroup(group.id);
+      onActiveManuscriptChange(group.id);
+      if (onManuscriptGroupChange) onManuscriptGroupChange();
+    } catch (err) {
+      console.error('Failed to duplicate manuscript group:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowMenu(false);
+    const current = manuscriptGroups.find((g) => g.id === activeManuscriptId);
+    if (!window.confirm(`Ta bort "${current?.name}"? Alla sektioner i detta manus raderas.`)) return;
+    try {
+      await api.deleteManuscriptGroup(activeManuscriptId);
+      if (onManuscriptGroupChange) onManuscriptGroupChange();
+    } catch (err) {
+      alert(err.message || 'Kan inte ta bort det sista manuset.');
+    }
+  };
+
   return (
-    <div className="manuscript-split">
-      <div className="manuscript-split__left">
-        <ScriptSide manuscript={manuscript} onManuscriptChange={onManuscriptChange} />
+    <div className="flex items-center gap-2 mb-4">
+      <select
+        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+        value={activeManuscriptId || ''}
+        onChange={handleSwitch}
+      >
+        {(manuscriptGroups || []).map((g) => (
+          <option key={g.id} value={g.id}>{g.name}</option>
+        ))}
+      </select>
+      <button className="h-8 w-8 rounded-lg bg-accent text-white flex items-center justify-center text-sm font-bold" onClick={handleCreate} title="Nytt manus">+</button>
+      <div className="relative">
+        <button className="h-8 w-8 rounded-lg bg-accent text-white flex items-center justify-center text-sm font-bold" onClick={() => setShowMenu((s) => !s)} title="Fler alternativ">...</button>
+        {showMenu && (
+          <div className="absolute top-full right-0 mt-1 bg-white shadow-lg rounded-lg border border-slate-100 py-1 z-10">
+            <button className="w-full px-3 py-2 text-sm text-left hover:bg-slate-50" onClick={handleRename}>Byt namn</button>
+            <button className="w-full px-3 py-2 text-sm text-left hover:bg-slate-50" onClick={handleDuplicate}>Duplicera</button>
+            <button className="w-full px-3 py-2 text-sm text-left hover:bg-slate-50 text-red-600" onClick={handleDelete}>Ta bort</button>
+          </div>
+        )}
       </div>
-      <div className="manuscript-split__divider" />
-      <div className="manuscript-split__right">
-        <ObjectionsSide manuscript={manuscript} onManuscriptChange={onManuscriptChange} />
+    </div>
+  );
+}
+
+export default function ManuscriptSplitPanel({ manuscript, onManuscriptChange, manuscriptGroups, activeManuscriptId, onManuscriptGroupChange, onActiveManuscriptChange }) {
+  return (
+    <div>
+      <ManuscriptGroupSelector
+        manuscriptGroups={manuscriptGroups}
+        activeManuscriptId={activeManuscriptId}
+        onManuscriptGroupChange={onManuscriptGroupChange}
+        onActiveManuscriptChange={onActiveManuscriptChange}
+      />
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <ScriptSide manuscript={manuscript} onManuscriptChange={onManuscriptChange} />
+        </div>
+        <div className="w-px bg-slate-200" />
+        <div className="flex-1">
+          <ObjectionsSide manuscript={manuscript} onManuscriptChange={onManuscriptChange} />
+        </div>
       </div>
     </div>
   );

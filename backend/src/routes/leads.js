@@ -5,11 +5,30 @@ import path from 'path';
 import fs from 'fs';
 import db from '../database.js';
 import { detectColumnMapping } from '../utils/columnMapping.js';
+import { validateId } from '../middleware/validateId.js';
 
 const router = Router();
 
+// Valid lead statuses
+const VALID_STATUSES = new Set([
+  'new', 'no_answer', 'callback', 'interested', 'not_interested',
+  'booked_meeting', 'already_customer', 'sent_email', 'sent_followup', 'wrong_number',
+]);
+
 // Configure multer for file uploads (temp directory)
-const upload = multer({ dest: path.join(process.cwd(), 'data', 'uploads') });
+const ALLOWED_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv']);
+const upload = multer({
+  dest: path.join(process.cwd(), 'data', 'uploads'),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_EXTENSIONS.has(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .xlsx, .xls, and .csv files are allowed'));
+    }
+  },
+});
 
 // GET /api/leads/stats - Return counts by status + session stats
 router.get('/stats', (req, res) => {
@@ -63,15 +82,26 @@ router.get('/next', (req, res) => {
 
     // Priority: overdue callbacks > new leads > no_answer (oldest first)
     const lead = db.prepare(`
+      WITH call_counts AS (
+        SELECT lead_id, COUNT(*) as call_count FROM call_history GROUP BY lead_id
+      ),
+      latest_callbacks AS (
+        SELECT lead_id, callback_time
+        FROM call_history
+        WHERE callback_time IS NOT NULL
+          AND id IN (SELECT MAX(id) FROM call_history WHERE callback_time IS NOT NULL GROUP BY lead_id)
+      )
       SELECT l.*,
-        (SELECT COUNT(*) FROM call_history WHERE lead_id = l.id) as call_count,
-        (SELECT callback_time FROM call_history WHERE lead_id = l.id AND callback_time IS NOT NULL ORDER BY called_at DESC LIMIT 1) as next_callback
+        COALESCE(cc.call_count, 0) as call_count,
+        lc.callback_time as next_callback
       FROM leads l
+      LEFT JOIN call_counts cc ON cc.lead_id = l.id
+      LEFT JOIN latest_callbacks lc ON lc.lead_id = l.id
       WHERE l.status NOT IN ('not_interested', 'already_customer', 'wrong_number', 'booked_meeting')
       ${listFilter}
       ORDER BY
         CASE
-          WHEN l.status = 'callback' AND (SELECT callback_time FROM call_history WHERE lead_id = l.id AND callback_time IS NOT NULL ORDER BY called_at DESC LIMIT 1) <= datetime('now') THEN 0
+          WHEN l.status = 'callback' AND lc.callback_time <= datetime('now') THEN 0
           WHEN l.status = 'callback' THEN 1
           WHEN l.status = 'new' THEN 2
           WHEN l.status = 'no_answer' THEN 3
@@ -121,13 +151,45 @@ router.get('/callbacks', (req, res) => {
 router.get('/analytics', (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    // Default: start_date = today, end_date = today
     const startDate = start_date || new Date().toISOString().split('T')[0];
     const endDate = end_date || new Date().toISOString().split('T')[0];
 
-    // Calls by hour in date range
+    // Calculate previous period of equal length for comparison
+    const daysDiff = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
+    const prevEnd = new Date(new Date(startDate).getTime() - 86400000).toISOString().split('T')[0];
+    const prevStart = new Date(new Date(prevEnd).getTime() - (daysDiff - 1) * 86400000).toISOString().split('T')[0];
+
+    // KPI summary for current period
+    const kpis = db.prepare(`
+      SELECT
+        COUNT(*) as total_calls,
+        COUNT(DISTINCT date(called_at)) as active_days,
+        COALESCE(SUM(CASE WHEN outcome NOT IN ('no_answer', 'wrong_number') THEN 1 ELSE 0 END), 0) as connected,
+        COALESCE(SUM(CASE WHEN outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END), 0) as converted,
+        COALESCE(SUM(CASE WHEN outcome = 'booked_meeting' THEN 1 ELSE 0 END), 0) as meetings
+      FROM call_history
+      WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
+    `).get({ startDate, endDate });
+
+    // KPI summary for previous period (for delta comparison)
+    const kpisPrevious = db.prepare(`
+      SELECT
+        COUNT(*) as total_calls,
+        COUNT(DISTINCT date(called_at)) as active_days,
+        COALESCE(SUM(CASE WHEN outcome NOT IN ('no_answer', 'wrong_number') THEN 1 ELSE 0 END), 0) as connected,
+        COALESCE(SUM(CASE WHEN outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END), 0) as converted,
+        COALESCE(SUM(CASE WHEN outcome = 'booked_meeting' THEN 1 ELSE 0 END), 0) as meetings
+      FROM call_history
+      WHERE date(called_at) >= @prevStart AND date(called_at) <= @prevEnd
+    `).get({ prevStart, prevEnd });
+
+    // Calls by hour with connect/conversion rates
     const callsByHour = db.prepare(`
-      SELECT strftime('%H', called_at) as hour, COUNT(*) as count
+      SELECT
+        strftime('%H', called_at) as hour,
+        COUNT(*) as count,
+        SUM(CASE WHEN outcome NOT IN ('no_answer', 'wrong_number') THEN 1 ELSE 0 END) as connected,
+        SUM(CASE WHEN outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END) as converted
       FROM call_history
       WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
       GROUP BY hour ORDER BY hour
@@ -149,13 +211,15 @@ router.get('/analytics', (req, res) => {
       GROUP BY outcome
     `).all({ startDate, endDate });
 
-    // Conversion funnel (all time)
+    // Conversion funnel (date-filtered, using distinct leads)
     const funnel = db.prepare(`
       SELECT
-        (SELECT COUNT(*) FROM leads) as total,
-        (SELECT COUNT(*) FROM leads WHERE status = 'interested') as interested,
-        (SELECT COUNT(*) FROM leads WHERE status = 'booked_meeting') as booked_meeting
-    `).get();
+        COUNT(DISTINCT lead_id) as total,
+        COUNT(DISTINCT CASE WHEN outcome = 'interested' THEN lead_id END) as interested,
+        COUNT(DISTINCT CASE WHEN outcome = 'booked_meeting' THEN lead_id END) as booked_meeting
+      FROM call_history
+      WHERE date(called_at) >= @startDate AND date(called_at) <= @endDate
+    `).get({ startDate, endDate });
 
     // Calls per day in date range
     const callsPerDay = db.prepare(`
@@ -165,12 +229,98 @@ router.get('/analytics', (req, res) => {
       GROUP BY day ORDER BY day
     `).all({ startDate, endDate });
 
+    // Callback effectiveness
+    const callbackStats = db.prepare(`
+      SELECT
+        COUNT(DISTINCT cb.lead_id) as total,
+        COUNT(DISTINCT CASE WHEN later.outcome IN ('interested', 'booked_meeting') THEN cb.lead_id END) as converted,
+        COUNT(DISTINCT CASE WHEN later.outcome = 'not_interested' THEN cb.lead_id END) as rejected
+      FROM call_history cb
+      LEFT JOIN call_history later ON later.lead_id = cb.lead_id
+        AND later.called_at > cb.called_at
+        AND later.outcome IN ('interested', 'booked_meeting', 'not_interested')
+      WHERE cb.outcome = 'callback'
+        AND date(cb.called_at) >= @startDate AND date(cb.called_at) <= @endDate
+    `).get({ startDate, endDate });
+    callbackStats.converted = callbackStats.converted || 0;
+    callbackStats.rejected = callbackStats.rejected || 0;
+    callbackStats.pending = callbackStats.total - callbackStats.converted - callbackStats.rejected;
+
+    // Industry breakdown
+    const byIndustry = db.prepare(`
+      SELECT
+        l.industry,
+        COUNT(*) as calls,
+        SUM(CASE WHEN ch.outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END) as converted,
+        ROUND(100.0 * SUM(CASE WHEN ch.outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END) / COUNT(*), 1) as rate
+      FROM call_history ch
+      JOIN leads l ON l.id = ch.lead_id
+      WHERE date(ch.called_at) >= @startDate AND date(ch.called_at) <= @endDate
+        AND l.industry IS NOT NULL AND l.industry != ''
+      GROUP BY l.industry
+      HAVING calls >= 3
+      ORDER BY rate DESC
+      LIMIT 10
+    `).all({ startDate, endDate });
+
+    // City breakdown
+    const byCity = db.prepare(`
+      SELECT
+        l.city,
+        COUNT(*) as calls,
+        SUM(CASE WHEN ch.outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END) as converted,
+        ROUND(100.0 * SUM(CASE WHEN ch.outcome IN ('interested', 'booked_meeting') THEN 1 ELSE 0 END) / COUNT(*), 1) as rate
+      FROM call_history ch
+      JOIN leads l ON l.id = ch.lead_id
+      WHERE date(ch.called_at) >= @startDate AND date(ch.called_at) <= @endDate
+        AND l.city IS NOT NULL AND l.city != ''
+      GROUP BY l.city
+      HAVING calls >= 3
+      ORDER BY rate DESC
+      LIMIT 10
+    `).all({ startDate, endDate });
+
+    // Pipeline velocity
+    const velocity = db.prepare(`
+      SELECT
+        ROUND(AVG(julianday(first_call) - julianday(created)), 1) as avg_days_to_first_call
+      FROM (
+        SELECT l.created_at as created, MIN(ch.called_at) as first_call
+        FROM leads l
+        JOIN call_history ch ON ch.lead_id = l.id
+        GROUP BY l.id
+      )
+    `).get();
+
+    const velocityToMeeting = db.prepare(`
+      SELECT
+        ROUND(AVG(julianday(meeting_call) - julianday(first_call)), 1) as avg_days_to_meeting
+      FROM (
+        SELECT l.id,
+          MIN(ch.called_at) as first_call,
+          MIN(CASE WHEN ch.outcome = 'booked_meeting' THEN ch.called_at END) as meeting_call
+        FROM leads l
+        JOIN call_history ch ON ch.lead_id = l.id
+        GROUP BY l.id
+        HAVING meeting_call IS NOT NULL
+      )
+    `).get();
+
     res.json({
+      kpis,
+      kpis_previous: kpisPrevious,
       calls_by_hour: callsByHour,
       outcome_distribution: outcomeDistribution,
       avg_duration: avgDuration,
       funnel,
       calls_per_day: callsPerDay,
+      callback_stats: callbackStats,
+      by_industry: byIndustry,
+      by_city: byCity,
+      velocity: {
+        days_to_first_call: velocity.avg_days_to_first_call,
+        days_to_meeting: velocityToMeeting.avg_days_to_meeting,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -260,7 +410,7 @@ router.get('/', (req, res) => {
     }
     if (search) {
       conditions.push(
-        `(l.company LIKE @search OR l.contact_name LIKE @search OR l.phone LIKE @search OR l.email LIKE @search)`
+        `(LOWER_UNICODE(l.company) LIKE LOWER_UNICODE(@search) OR LOWER_UNICODE(l.contact_name) LIKE LOWER_UNICODE(@search) OR l.phone LIKE @search OR LOWER_UNICODE(l.email) LIKE LOWER_UNICODE(@search))`
       );
       params.search = `%${search}%`;
     }
@@ -272,15 +422,18 @@ router.get('/', (req, res) => {
     const sortCol = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
     const sortDirection = sort_dir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
-    params.limit = parseInt(limit);
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const safeLimit = Math.min(200, Math.max(1, parseInt(limit) || 50));
+    const offset = (safePage - 1) * safeLimit;
+    params.limit = safeLimit;
     params.offset = offset;
 
     const countRow = db.prepare(`SELECT COUNT(*) as total FROM leads l ${whereClause}`).get(params);
 
     const rows = db.prepare(`
-      SELECT l.*, (SELECT COUNT(*) FROM call_history WHERE lead_id = l.id) as call_count
+      SELECT l.*, COALESCE(cc.call_count, 0) as call_count
       FROM leads l
+      LEFT JOIN (SELECT lead_id, COUNT(*) as call_count FROM call_history GROUP BY lead_id) cc ON cc.lead_id = l.id
       ${whereClause}
       ORDER BY l.${sortCol} ${sortDirection}
       LIMIT @limit OFFSET @offset
@@ -289,9 +442,9 @@ router.get('/', (req, res) => {
     res.json({
       leads: rows,
       total: countRow.total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total_pages: Math.ceil(countRow.total / parseInt(limit)),
+      page: safePage,
+      limit: safeLimit,
+      total_pages: Math.ceil(countRow.total / safeLimit),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -299,23 +452,21 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/leads/:id - Get single lead with notes count and last call date
-router.get('/:id', (req, res) => {
+router.get('/:id', validateId('id'), (req, res) => {
   try {
-    const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(req.params.id);
+    const lead = db.prepare(`
+      SELECT l.*,
+        (SELECT COUNT(*) FROM notes WHERE lead_id = l.id) as notes_count,
+        (SELECT called_at FROM call_history WHERE lead_id = l.id ORDER BY called_at DESC LIMIT 1) as last_call_date
+      FROM leads l WHERE l.id = ?
+    `).get(req.params.id);
     if (!lead) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    const notesCount = db.prepare('SELECT COUNT(*) as count FROM notes WHERE lead_id = ?').get(req.params.id);
-    const lastCall = db.prepare('SELECT called_at FROM call_history WHERE lead_id = ? ORDER BY called_at DESC LIMIT 1').get(req.params.id);
     const contacts = db.prepare('SELECT * FROM contacts WHERE lead_id = ? ORDER BY is_primary DESC, created_at ASC').all(req.params.id);
 
-    res.json({
-      ...lead,
-      contacts,
-      notes_count: notesCount.count,
-      last_call_date: lastCall ? lastCall.called_at : null,
-    });
+    res.json({ ...lead, contacts });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -325,6 +476,12 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const { company, contact_name, phone, email, title, industry, city, status, priority, custom_fields } = req.body;
+
+    // Validate status
+    const resolvedStatus = status || 'new';
+    if (!VALID_STATUSES.has(resolvedStatus)) {
+      return res.status(400).json({ error: `Invalid status: "${resolvedStatus}"` });
+    }
 
     // Check for duplicate company name
     if (company && company.trim()) {
@@ -336,38 +493,43 @@ router.post('/', (req, res) => {
       }
     }
 
-    const result = db.prepare(`
-      INSERT INTO leads (company, contact_name, phone, email, title, industry, city, status, priority, custom_fields)
-      VALUES (@company, @contact_name, @phone, @email, @title, @industry, @city, @status, @priority, @custom_fields)
-    `).run({
-      company: company || null,
-      contact_name: contact_name || null,
-      phone: phone || null,
-      email: email || null,
-      title: title || null,
-      industry: industry || null,
-      city: city || null,
-      status: status || 'new',
-      priority: priority || 0,
-      custom_fields: custom_fields ? JSON.stringify(custom_fields) : null,
-    });
-
-    const leadId = result.lastInsertRowid;
-
-    // Auto-create a primary contact if contact info was provided
-    if (contact_name || phone || email || title) {
-      db.prepare(`
-        INSERT INTO contacts (lead_id, name, title, phone, email, is_primary)
-        VALUES (@lead_id, @name, @title, @phone, @email, 1)
+    const createLead = db.transaction(() => {
+      const result = db.prepare(`
+        INSERT INTO leads (company, contact_name, phone, email, title, industry, city, status, priority, custom_fields)
+        VALUES (@company, @contact_name, @phone, @email, @title, @industry, @city, @status, @priority, @custom_fields)
       `).run({
-        lead_id: leadId,
-        name: contact_name || null,
-        title: title || null,
+        company: company || null,
+        contact_name: contact_name || null,
         phone: phone || null,
         email: email || null,
+        title: title || null,
+        industry: industry || null,
+        city: city || null,
+        status: resolvedStatus,
+        priority: Number.isInteger(priority) && priority >= 0 && priority <= 5 ? priority : 0,
+        custom_fields: custom_fields ? JSON.stringify(custom_fields) : null,
       });
-    }
 
+      const leadId = result.lastInsertRowid;
+
+      // Auto-create a primary contact if contact info was provided
+      if (contact_name || phone || email || title) {
+        db.prepare(`
+          INSERT INTO contacts (lead_id, name, title, phone, email, is_primary)
+          VALUES (@lead_id, @name, @title, @phone, @email, 1)
+        `).run({
+          lead_id: leadId,
+          name: contact_name || null,
+          title: title || null,
+          phone: phone || null,
+          email: email || null,
+        });
+      }
+
+      return leadId;
+    });
+
+    const leadId = createLead();
     const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
     res.status(201).json(lead);
   } catch (err) {
@@ -376,7 +538,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/leads/:id - Update lead
-router.put('/:id', (req, res) => {
+router.put('/:id', validateId('id'), (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM leads WHERE id = ?').get(req.params.id);
     if (!existing) {
@@ -392,6 +554,12 @@ router.put('/:id', (req, res) => {
         let value = req.body[field];
         if (field === 'custom_fields' && typeof value === 'object') {
           value = JSON.stringify(value);
+        }
+        if (field === 'status' && !VALID_STATUSES.has(value)) {
+          return res.status(400).json({ error: `Invalid status: "${value}"` });
+        }
+        if (field === 'priority') {
+          value = Number.isInteger(value) && value >= 0 && value <= 5 ? value : 0;
         }
         updates.push(`${field} = @${field}`);
         params[field] = value;
@@ -414,7 +582,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/leads/:id - Delete lead
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateId('id'), (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM leads WHERE id = ?').get(req.params.id);
     if (!existing) {
@@ -445,6 +613,10 @@ router.post('/import', upload.single('file'), (req, res) => {
 
     if (rawData.length === 0) {
       return res.json({ imported: 0, message: 'No data found in file' });
+    }
+
+    if (rawData.length > 10000) {
+      return res.status(413).json({ error: 'Too many rows. Maximum 10,000 rows per import.' });
     }
 
     const headers = Object.keys(rawData[0]);

@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import db from '../database.js';
+import { validateId } from '../middleware/validateId.js';
 
 const router = Router();
 
 // GET /api/leads/:id/contacts - Get all contacts for a lead
-router.get('/:id/contacts', (req, res) => {
+router.get('/:id/contacts', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -22,7 +23,7 @@ router.get('/:id/contacts', (req, res) => {
 });
 
 // POST /api/leads/:id/contacts - Add contact to lead
-router.post('/:id/contacts', (req, res) => {
+router.post('/:id/contacts', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -31,31 +32,36 @@ router.post('/:id/contacts', (req, res) => {
 
     const { name, title, phone, phone_mobile, email, department, linkedin, is_primary } = req.body;
 
-    // If marking as primary, unset other primaries first
-    if (is_primary) {
-      db.prepare('UPDATE contacts SET is_primary = 0 WHERE lead_id = ?').run(req.params.id);
-    }
+    const createContact = db.transaction(() => {
+      // If marking as primary, unset other primaries first
+      if (is_primary) {
+        db.prepare('UPDATE contacts SET is_primary = 0 WHERE lead_id = ?').run(req.params.id);
+      }
 
-    // If this is the first contact, make it primary
-    const count = db.prepare('SELECT COUNT(*) as count FROM contacts WHERE lead_id = ?').get(req.params.id);
-    const makePrimary = is_primary || count.count === 0 ? 1 : 0;
+      // If this is the first contact, make it primary
+      const count = db.prepare('SELECT COUNT(*) as count FROM contacts WHERE lead_id = ?').get(req.params.id);
+      const makePrimary = is_primary || count.count === 0 ? 1 : 0;
 
-    const result = db.prepare(`
-      INSERT INTO contacts (lead_id, name, title, phone, phone_mobile, email, department, linkedin, is_primary)
-      VALUES (@lead_id, @name, @title, @phone, @phone_mobile, @email, @department, @linkedin, @is_primary)
-    `).run({
-      lead_id: req.params.id,
-      name: name || null,
-      title: title || null,
-      phone: phone || null,
-      phone_mobile: phone_mobile || null,
-      email: email || null,
-      department: department || null,
-      linkedin: linkedin || null,
-      is_primary: makePrimary,
+      const result = db.prepare(`
+        INSERT INTO contacts (lead_id, name, title, phone, phone_mobile, email, department, linkedin, is_primary)
+        VALUES (@lead_id, @name, @title, @phone, @phone_mobile, @email, @department, @linkedin, @is_primary)
+      `).run({
+        lead_id: req.params.id,
+        name: name || null,
+        title: title || null,
+        phone: phone || null,
+        phone_mobile: phone_mobile || null,
+        email: email || null,
+        department: department || null,
+        linkedin: linkedin || null,
+        is_primary: makePrimary,
+      });
+
+      return result.lastInsertRowid;
     });
 
-    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(result.lastInsertRowid);
+    const contactId = createContact();
+    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(contactId);
     res.status(201).json(contact);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -63,7 +69,7 @@ router.post('/:id/contacts', (req, res) => {
 });
 
 // PUT /api/leads/:leadId/contacts/:contactId - Update contact
-router.put('/:leadId/contacts/:contactId', (req, res) => {
+router.put('/:leadId/contacts/:contactId', validateId('leadId', 'contactId'), (req, res) => {
   try {
     const contact = db.prepare(
       'SELECT * FROM contacts WHERE id = ? AND lead_id = ?'
@@ -103,7 +109,7 @@ router.put('/:leadId/contacts/:contactId', (req, res) => {
 });
 
 // DELETE /api/leads/:leadId/contacts/:contactId - Delete contact
-router.delete('/:leadId/contacts/:contactId', (req, res) => {
+router.delete('/:leadId/contacts/:contactId', validateId('leadId', 'contactId'), (req, res) => {
   try {
     const contact = db.prepare(
       'SELECT * FROM contacts WHERE id = ? AND lead_id = ?'
@@ -113,18 +119,21 @@ router.delete('/:leadId/contacts/:contactId', (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.contactId);
+    const deleteContact = db.transaction(() => {
+      db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.contactId);
 
-    // If deleted contact was primary, promote the next one
-    if (contact.is_primary) {
-      const next = db.prepare(
-        'SELECT id FROM contacts WHERE lead_id = ? ORDER BY created_at ASC LIMIT 1'
-      ).get(req.params.leadId);
-      if (next) {
-        db.prepare('UPDATE contacts SET is_primary = 1 WHERE id = ?').run(next.id);
+      // If deleted contact was primary, promote the next one
+      if (contact.is_primary) {
+        const next = db.prepare(
+          'SELECT id FROM contacts WHERE lead_id = ? ORDER BY created_at ASC LIMIT 1'
+        ).get(req.params.leadId);
+        if (next) {
+          db.prepare('UPDATE contacts SET is_primary = 1 WHERE id = ?').run(next.id);
+        }
       }
-    }
+    });
 
+    deleteContact();
     res.json({ message: 'Contact deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

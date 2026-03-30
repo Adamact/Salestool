@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApi } from '../hooks/useApi';
+import SlidePanel from './SlidePanel';
 
 export default function ExcelImport({ onClose, onImported }) {
   const api = useApi();
@@ -22,6 +23,7 @@ export default function ExcelImport({ onClose, onImported }) {
       setError(err.message || 'Import misslyckades');
     } finally {
       setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -38,52 +40,75 @@ export default function ExcelImport({ onClose, onImported }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__header">
-          <h3>Importera leads fr\u00e5n Excel</h3>
-          <button className="modal__close" onClick={onClose}>{'\u00d7'}</button>
-        </div>
-        <div className="modal__body">
-          <div
-            className={`import-drop ${dragging ? 'import-drop--active' : ''}`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={() => setDragging(false)}
-            onClick={() => fileRef.current?.click()}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              style={{ display: 'none' }}
-              onChange={(e) => handleFile(e.target.files[0])}
-            />
-            {uploading ? (
-              <p>Laddar upp...</p>
-            ) : (
-              <>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8, opacity: 0.5 }}>
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <p>Dra och sl{'\u00e4'}pp en fil h{'\u00e4'}r, eller klicka f{'\u00f6'}r att v{'\u00e4'}lja</p>
-                <span className="import-drop__hint">.xlsx, .xls eller .csv</span>
-              </>
-            )}
-          </div>
-          {error && <p className="import-error">{error}</p>}
-          {result && (
-            <p className="import-success">
-              {result.imported ?? result.count ?? 0} leads importerade!
-            </p>
+    <SlidePanel open={true} onClose={onClose} title="Importera leads" width={440}>
+      <div className="px-6 py-6">
+        <div
+          className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition ${
+            dragging
+              ? 'border-accent bg-accent-subtle'
+              : 'border-slate-200 hover:border-slate-300'
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDragging(false)}
+          onClick={() => fileRef.current?.click()}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+          {uploading ? (
+            <p className="text-sm text-slate-500">Laddar upp...</p>
+          ) : (
+            <>
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mx-auto text-slate-300 mb-3"
+              >
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <p className="text-sm text-slate-600">
+                Dra och släpp en fil här, eller klicka för att välja
+              </p>
+              <span className="text-xs text-slate-400 mt-1 block">
+                .xlsx, .xls eller .csv
+              </span>
+            </>
           )}
         </div>
-        <div className="modal__footer">
-          <button className="btn btn--secondary" onClick={onClose}>St{'\u00e4'}ng</button>
-        </div>
+
+        {error && (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        {result && (
+          <p className="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
+            {result.imported ?? result.count ?? 0} leads importerade!
+          </p>
+        )}
       </div>
-    </div>
+
+      <div className="mt-auto px-6 py-4 border-t border-slate-100 flex justify-end">
+        <button
+          className="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 transition-colors"
+          onClick={onClose}
+        >
+          Stäng
+        </button>
+      </div>
+    </SlidePanel>
   );
 }

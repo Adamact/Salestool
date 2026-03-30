@@ -127,7 +127,7 @@ export default function CalendarView({ onClose }) {
       if (data && data.url) {
         window.open(data.url, '_blank', 'width=500,height=600');
       } else {
-        setGoogleError('Kunde inte h\u00e4mta Google-auth URL.');
+        setGoogleError('Kunde inte hämta Google-auth URL.');
       }
     } catch (err) {
       const msg = err.message || '';
@@ -296,8 +296,8 @@ export default function CalendarView({ onClose }) {
             )}
           </div>
 
-          <button className="calendar-header__close" onClick={onClose} title="St\u00e4ng">
-            {'\u00d7'}
+          <button className="calendar-header__close" onClick={onClose} title="Stäng">
+            ×
           </button>
         </div>
       </div>

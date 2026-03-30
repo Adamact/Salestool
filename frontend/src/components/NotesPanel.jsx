@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
+import { formatDate } from '../utils/formatters';
 
 export default function NotesPanel({ leadId }) {
   const api = useApi();
@@ -33,39 +34,32 @@ export default function NotesPanel({ leadId }) {
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr + 'Z');
-      return d.toLocaleString('sv-SE', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   return (
-    <div className="notes-panel">
-      <form className="notes-panel__form" onSubmit={handleSubmit}>
+    <div>
+      <form className="flex flex-col gap-2 mb-6" onSubmit={handleSubmit}>
         <textarea
-          className="notes-panel__textarea"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-y"
           placeholder="Skriv en anteckning..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
         />
-        <button className="notes-panel__submit" type="submit" disabled={saving || !text.trim()}>
-          {saving ? 'Sparar...' : 'L\u00e4gg till anteckning'}
+        <button
+          className="self-end rounded-lg bg-accent text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+          type="submit"
+          disabled={saving || !text.trim()}
+        >
+          {saving ? 'Sparar...' : 'Lägg till anteckning'}
         </button>
       </form>
-      <div className="notes-panel__list">
-        {notes.length === 0 && <p className="notes-panel__empty">Inga anteckningar \u00e4nnu.</p>}
+      <div className="space-y-2">
+        {notes.length === 0 && (
+          <p className="text-center py-8 text-sm text-slate-400">Inga anteckningar ännu.</p>
+        )}
         {notes.map((note, i) => (
-          <div key={note.id || i} className="note-item">
-            <p className="note-item__text">{note.text}</p>
-            <span className="note-item__date">{formatDate(note.created_at)}</span>
+          <div key={note.id || i} className="rounded-lg border border-slate-100 p-3">
+            <p className="text-sm text-slate-700">{note.text}</p>
+            <span className="text-xs text-slate-400 mt-1 block">{formatDate(note.created_at)}</span>
           </div>
         ))}
       </div>

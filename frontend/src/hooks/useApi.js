@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-const BASE = '/api';
+const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 async function request(url, options = {}) {
   const res = await fetch(`${BASE}${url}`, {
@@ -25,7 +25,7 @@ const api = {
     if (filters.status && filters.status !== 'alla') params.set('status', filters.status);
     if (filters.city) params.set('city', filters.city);
     if (filters.search) params.set('search', filters.search);
-    params.set('limit', '1000');
+    params.set('limit', '200');
     const qs = params.toString();
     return request(`/leads${qs ? '?' + qs : ''}`);
   },
@@ -136,8 +136,35 @@ const api = {
     });
   },
 
-  getManuscript() {
-    return request('/manuscript');
+  // Manuscript groups
+  getManuscriptGroups() {
+    return request('/manuscript/groups');
+  },
+
+  createManuscriptGroup(data) {
+    return request('/manuscript/groups', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  updateManuscriptGroup(id, data) {
+    return request(`/manuscript/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  deleteManuscriptGroup(id) {
+    return request(`/manuscript/groups/${id}`, { method: 'DELETE' });
+  },
+
+  duplicateManuscriptGroup(id) {
+    return request(`/manuscript/groups/${id}/duplicate`, { method: 'POST' });
+  },
+
+  activateManuscriptGroup(id) {
+    return request(`/manuscript/groups/${id}/activate`, { method: 'PUT' });
+  },
+
+  // Manuscript sections
+  getManuscript(groupId) {
+    const qs = groupId ? `?group=${groupId}` : '';
+    return request(`/manuscript${qs}`);
   },
 
   createManuscript(data) {

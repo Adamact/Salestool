@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import clsx from 'clsx';
 import { getStatusColor, CALL_OUTCOMES as OUTCOMES } from '../constants/statuses';
 
 export default function LogCallModal({ lead, onSave, onClose }) {
@@ -9,6 +10,15 @@ export default function LogCallModal({ lead, onSave, onClose }) {
   const [startTime] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const notesRef = useRef(null);
+  const outcomeRef = useRef(outcome);
+  const notesValRef = useRef(notes);
+  const savingRef = useRef(saving);
+  const callbackTimeRef = useRef(callbackTime);
+
+  useEffect(() => { outcomeRef.current = outcome; }, [outcome]);
+  useEffect(() => { notesValRef.current = notes; }, [notes]);
+  useEffect(() => { savingRef.current = saving; }, [saving]);
+  useEffect(() => { callbackTimeRef.current = callbackTime; }, [callbackTime]);
 
   // Call duration timer
   useEffect(() => {
@@ -35,10 +45,10 @@ export default function LogCallModal({ lead, onSave, onClose }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'TEXTAREA') {
-        // Only handle Enter (without shift) in textarea to save
+        // Only handle Ctrl+Enter in textarea to save
         if (e.key === 'Enter' && !e.shiftKey && e.ctrlKey) {
           e.preventDefault();
-          if (!saving) handleSave();
+          if (!savingRef.current) handleSave();
         }
         return;
       }
@@ -47,7 +57,7 @@ export default function LogCallModal({ lead, onSave, onClose }) {
         e.preventDefault();
         setOutcome(OUTCOMES[num - 1].value);
       }
-      if (e.key === 'Enter' && !saving) {
+      if (e.key === 'Enter' && !savingRef.current) {
         e.preventDefault();
         handleSave();
       }
@@ -58,7 +68,7 @@ export default function LogCallModal({ lead, onSave, onClose }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [outcome, notes, saving, callbackTime]);
+  }, [onClose]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -84,58 +94,132 @@ export default function LogCallModal({ lead, onSave, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__header">
-          <h3>Logga samtal</h3>
-          <span className="modal__timer">{formatTimer(elapsed)}</span>
-          <button className="modal__close" onClick={onClose}>&times;</button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="text-lg font-semibold text-slate-900">Logga samtal</h3>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
+              <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="font-mono tabular-nums">{formatTimer(elapsed)}</span>
+            </span>
+            <button
+              className="flex items-center justify-center h-8 w-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              onClick={onClose}
+            >
+              &times;
+            </button>
+          </div>
         </div>
-        <div className="modal__body">
-          <p className="modal__lead-info">
-            <strong>{lead.company}</strong> &mdash; {lead.contact_name}
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-sm text-slate-600">
+            <span className="font-semibold text-slate-900">{lead.company}</span>
+            {' '}&mdash; {lead.contact_name}
           </p>
 
-          <label className="modal__label">Resultat <span className="modal__hint">(tryck 1-9)</span></label>
-          <div className="outcome-grid">
-            {OUTCOMES.map((o, idx) => (
-              <button
-                key={o.value}
-                className={`outcome-btn ${outcome === o.value ? 'outcome-btn--active' : ''}`}
-                style={outcome === o.value ? { backgroundColor: getStatusColor(o.value), color: '#fff', borderColor: getStatusColor(o.value) } : {}}
-                onClick={() => setOutcome(o.value)}
-                type="button"
-              >
-                <span className="outcome-btn__key">{idx + 1}</span> {o.label}
-              </button>
-            ))}
+          {/* Outcome selector */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Resultat{' '}
+              <span className="text-xs font-normal text-slate-400">(tryck 1-9)</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {OUTCOMES.map((o, idx) => {
+                const color = getStatusColor(o.value);
+                const isSelected = outcome === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    className={clsx(
+                      'relative flex items-center gap-2 rounded-lg border py-2.5 px-3 text-sm font-medium transition-all duration-150 cursor-pointer text-left',
+                      isSelected
+                        ? 'text-white border-transparent shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    )}
+                    style={
+                      isSelected
+                        ? { backgroundColor: color, borderColor: color }
+                        : { borderLeftWidth: '3px', borderLeftColor: color }
+                    }
+                    onClick={() => setOutcome(o.value)}
+                  >
+                    <span
+                      className={clsx(
+                        'inline-flex items-center justify-center h-5 w-5 rounded text-xs font-bold shrink-0',
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-100 text-slate-500'
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="truncate">{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
+          {/* Callback time */}
           {outcome === 'callback' && (
-            <div className="modal__callback-time">
-              <label className="modal__label">Återring tid</label>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">
+                Återring tid
+              </label>
               <input
                 type="datetime-local"
-                className="modal__datetime"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-shadow"
                 value={callbackTime || getDefaultCallbackTime()}
                 onChange={(e) => setCallbackTime(e.target.value)}
               />
             </div>
           )}
 
-          <label className="modal__label">Anteckningar (valfritt) <span className="modal__hint">Ctrl+Enter för att spara</span></label>
-          <textarea
-            ref={notesRef}
-            className="modal__textarea"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Anteckningar om samtalet..."
-          />
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700">
+              Anteckningar (valfritt){' '}
+              <span className="text-xs font-normal text-slate-400">Ctrl+Enter för att spara</span>
+            </label>
+            <textarea
+              ref={notesRef}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-shadow resize-y"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Anteckningar om samtalet..."
+            />
+          </div>
         </div>
-        <div className="modal__footer">
-          <button className="btn btn--secondary" onClick={onClose}>Avbryt</button>
-          <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button
+            className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+            onClick={onClose}
+          >
+            Avbryt
+          </button>
+          <button
+            className={clsx(
+              'rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors',
+              saving
+                ? 'bg-accent/70 cursor-not-allowed'
+                : 'bg-accent hover:bg-accent-hover'
+            )}
+            onClick={handleSave}
+            disabled={saving}
+          >
             {saving ? 'Sparar...' : 'Spara'}
           </button>
         </div>

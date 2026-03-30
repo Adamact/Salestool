@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import db from '../database.js';
+import { validateId } from '../middleware/validateId.js';
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
@@ -29,6 +31,10 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE INDEX IF NOT EXISTS idx_events_lead_id ON events(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
+  CREATE INDEX IF NOT EXISTS idx_events_google_event_id ON events(google_event_id);
+
   CREATE TABLE IF NOT EXISTS google_auth (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     access_token TEXT,
@@ -45,6 +51,7 @@ const SCOPES = ['https://www.googleapis.com/auth/calendar'];
 const credentialsPath = path.join(__dirname, '..', '..', 'data', 'google-credentials.json');
 
 let oauth2Client = null;
+const pendingOAuthStates = new Map();
 
 function loadCredentials() {
   try {
@@ -256,8 +263,12 @@ router.get('/events', (req, res) => {
     const params = { start, end };
 
     if (lead_id) {
+      const leadIdNum = Number(lead_id);
+      if (!Number.isInteger(leadIdNum) || leadIdNum <= 0) {
+        return res.status(400).json({ error: 'lead_id must be a positive integer' });
+      }
       sql += ' AND e.lead_id = @lead_id';
-      params.lead_id = Number(lead_id);
+      params.lead_id = leadIdNum;
     }
 
     sql += ' ORDER BY e.start_time ASC';
@@ -277,6 +288,14 @@ router.post('/events', async (req, res) => {
 
     if (!title || !start_time || !end_time) {
       return res.status(400).json({ error: 'title, start_time, and end_time are required' });
+    }
+
+    if (isNaN(new Date(start_time).getTime())) {
+      return res.status(400).json({ error: 'start_time must be a valid ISO date string' });
+    }
+
+    if (isNaN(new Date(end_time).getTime())) {
+      return res.status(400).json({ error: 'end_time must be a valid ISO date string' });
     }
 
     const result = db.prepare(`
@@ -314,9 +333,13 @@ router.post('/events', async (req, res) => {
 });
 
 // PUT /api/calendar/events/:id
-router.put('/events/:id', async (req, res) => {
+router.put('/events/:id', validateId('id'), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id must be a positive integer' });
+    }
+
     const existing = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Event not found' });
@@ -363,7 +386,7 @@ router.put('/events/:id', async (req, res) => {
 });
 
 // DELETE /api/calendar/events/:id
-router.delete('/events/:id', async (req, res) => {
+router.delete('/events/:id', validateId('id'), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
@@ -425,10 +448,19 @@ router.get('/google/auth-url', (req, res) => {
     });
   }
 
+  const state = crypto.randomUUID();
+  pendingOAuthStates.set(state, Date.now());
+
+  // Clean up states older than 10 minutes
+  for (const [key, timestamp] of pendingOAuthStates) {
+    if (Date.now() - timestamp > 10 * 60 * 1000) pendingOAuthStates.delete(key);
+  }
+
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: SCOPES,
+    state,
   });
 
   res.json({ url });
@@ -437,10 +469,15 @@ router.get('/google/auth-url', (req, res) => {
 // GET /api/calendar/google/callback
 router.get('/google/callback', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code) {
       return res.status(400).send('Missing authorization code');
     }
+
+    if (!state || !pendingOAuthStates.has(state)) {
+      return res.status(403).send('Invalid or expired OAuth state');
+    }
+    pendingOAuthStates.delete(state);
 
     if (!oauth2Client) {
       return res.status(500).send('OAuth client not configured');
@@ -450,8 +487,8 @@ router.get('/google/callback', async (req, res) => {
     saveTokens(tokens);
     oauth2Client.setCredentials(tokens);
 
-    // Redirect back to frontend with success flag
-    res.redirect('http://localhost:5173/?google=connected');
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/?google=connected`);
   } catch (err) {
     console.error('Google OAuth callback error:', err.message);
     res.status(500).send('Failed to complete Google authentication');

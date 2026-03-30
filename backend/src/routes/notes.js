@@ -1,23 +1,12 @@
 import { Router } from 'express';
 import db from '../database.js';
+import { validateId } from '../middleware/validateId.js';
+import { OUTCOME_STATUS_MAP, VALID_OUTCOMES } from '../utils/outcomeMapping.js';
 
 const router = Router();
 
-// Outcome-to-status mapping for auto-updating lead status
-const OUTCOME_STATUS_MAP = {
-  no_answer: 'no_answer',
-  callback: 'callback',
-  interested: 'interested',
-  not_interested: 'not_interested',
-  booked_meeting: 'booked_meeting',
-  already_customer: 'already_customer',
-  wrong_number: 'wrong_number',
-};
-
-const VALID_OUTCOMES = Object.keys(OUTCOME_STATUS_MAP);
-
 // GET /api/leads/:id/notes - Get all notes for a lead (newest first)
-router.get('/:id/notes', (req, res) => {
+router.get('/:id/notes', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -35,7 +24,7 @@ router.get('/:id/notes', (req, res) => {
 });
 
 // POST /api/leads/:id/notes - Add note to lead
-router.post('/:id/notes', (req, res) => {
+router.post('/:id/notes', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -59,7 +48,7 @@ router.post('/:id/notes', (req, res) => {
 });
 
 // GET /api/leads/:id/history - Get call history for a lead
-router.get('/:id/history', (req, res) => {
+router.get('/:id/history', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -77,7 +66,7 @@ router.get('/:id/history', (req, res) => {
 });
 
 // POST /api/leads/:id/history - Log a call
-router.post('/:id/history', (req, res) => {
+router.post('/:id/history', validateId('id'), (req, res) => {
   try {
     const lead = db.prepare('SELECT id FROM leads WHERE id = ?').get(req.params.id);
     if (!lead) {
@@ -96,9 +85,13 @@ router.post('/:id/history', (req, res) => {
 
     const logCall = db.transaction(() => {
       // Insert call history record
+      const safeDuration = duration_seconds != null && Number.isInteger(parseInt(duration_seconds)) && parseInt(duration_seconds) >= 0
+        ? parseInt(duration_seconds)
+        : null;
+
       const result = db.prepare(
         'INSERT INTO call_history (lead_id, outcome, notes, callback_time, duration_seconds) VALUES (?, ?, ?, ?, ?)'
-      ).run(req.params.id, outcome, notes || null, callback_time || null, duration_seconds || null);
+      ).run(req.params.id, outcome, notes || null, callback_time || null, safeDuration);
 
       // Auto-update lead status to match outcome (skip for sent_email/sent_followup to preserve current status)
       const newStatus = OUTCOME_STATUS_MAP[outcome];

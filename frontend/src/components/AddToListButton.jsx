@@ -95,9 +95,9 @@ export default function AddToListButton({ leadId, onAdded }) {
   };
 
   return (
-    <div className="add-to-list" ref={ref}>
+    <div className="relative" ref={ref}>
       <button
-        className="btn btn--secondary add-to-list__trigger"
+        className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 flex items-center gap-1.5 hover:bg-slate-50 transition-colors"
         onClick={() => setOpen((prev) => !prev)}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -112,45 +112,45 @@ export default function AddToListButton({ leadId, onAdded }) {
       </button>
 
       {open && (
-        <div className="add-to-list__dropdown">
-          <div className="add-to-list__dropdown-header">Välj lista</div>
+        <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-slate-100 z-20 animate-fade-in">
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">Välj lista</div>
 
-          {loading && <div className="add-to-list__loading">Laddar...</div>}
+          {loading && <div className="px-3 py-3 text-xs text-slate-400">Laddar...</div>}
 
           {!loading && lists.length === 0 && (
-            <div className="add-to-list__empty">Inga listor skapade.</div>
+            <div className="px-3 py-3 text-xs text-slate-400">Inga listor skapade.</div>
           )}
 
           {!loading && lists.map((list) => (
-            <label key={list.id} className="add-to-list__item">
+            <label key={list.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-sm">
               <input
                 type="checkbox"
-                className="add-to-list__checkbox"
+                className="h-3.5 w-3.5 rounded accent-accent"
                 checked={leadListIds.has(list.id)}
                 onChange={() => handleToggle(list.id)}
                 disabled={toggling.has(list.id)}
               />
               <span
-                className="add-to-list__dot"
+                className="h-2 w-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: list.color || '#6b7280' }}
               />
-              <span className="add-to-list__item-name">{list.name}</span>
-              {toggling.has(list.id) && <span className="add-to-list__spinner" />}
+              <span className="text-slate-700">{list.name}</span>
+              {toggling.has(list.id) && <span className="h-3 w-3 animate-spin border-2 border-slate-300 border-t-accent rounded-full" />}
             </label>
           ))}
 
-          <div className="add-to-list__footer">
+          <div className="px-3 py-2 border-t border-slate-100">
             {!showNewForm ? (
               <button
-                className="add-to-list__new-link"
+                className="text-xs text-accent hover:underline"
                 onClick={() => setShowNewForm(true)}
               >
                 + Ny lista...
               </button>
             ) : (
-              <form className="add-to-list__new-form" onSubmit={handleCreateList}>
+              <form className="flex gap-1" onSubmit={handleCreateList}>
                 <input
-                  className="add-to-list__new-input"
+                  className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs"
                   type="text"
                   placeholder="Listnamn"
                   value={newName}
@@ -159,7 +159,7 @@ export default function AddToListButton({ leadId, onAdded }) {
                 />
                 <button
                   type="submit"
-                  className="btn btn--primary add-to-list__new-btn"
+                  className="bg-accent text-white rounded px-2 py-1 text-xs"
                   disabled={creating || !newName.trim()}
                 >
                   {creating ? '...' : 'OK'}

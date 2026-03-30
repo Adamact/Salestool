@@ -7,9 +7,22 @@
     "dev:backend": "cd backend && node src/server.js",
     "dev:frontend": "cd frontend && npx vite",
     "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "build": "cd frontend && npm run build",
+    "start:prod": "cd backend && node src/server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,jsx,json,css,md}\""
   },
   "dependencies": {
     "concurrently": "^8.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1"
   }
 }

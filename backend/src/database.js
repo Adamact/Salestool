@@ -18,6 +18,9 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Custom Unicode-aware LOWER function for case-insensitive search with å, ä, ö
+db.function('LOWER_UNICODE', (str) => str ? str.toLowerCase() : str);
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS leads (
@@ -49,6 +52,13 @@ db.exec(`
     outcome TEXT NOT NULL,
     notes TEXT,
     called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS manuscripts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    is_active INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS manuscript (
@@ -108,16 +118,64 @@ if (existingContacts.count === 0) {
 }
 
 // Migrations: add callback_time and duration_seconds to call_history
-try {
-  db.prepare("SELECT callback_time FROM call_history LIMIT 0").get();
-} catch {
+const callHistoryCols = db.prepare("PRAGMA table_info(call_history)").all().map(c => c.name);
+if (!callHistoryCols.includes('callback_time')) {
   db.exec("ALTER TABLE call_history ADD COLUMN callback_time DATETIME");
 }
-try {
-  db.prepare("SELECT duration_seconds FROM call_history LIMIT 0").get();
-} catch {
+if (!callHistoryCols.includes('duration_seconds')) {
   db.exec("ALTER TABLE call_history ADD COLUMN duration_seconds INTEGER");
 }
+
+// Migration: add manuscript_id FK to manuscript table
+const manuscriptCols = db.prepare("PRAGMA table_info(manuscript)").all().map(c => c.name);
+if (!manuscriptCols.includes('manuscript_id')) {
+  db.exec("ALTER TABLE manuscript ADD COLUMN manuscript_id INTEGER REFERENCES manuscripts(id) ON DELETE CASCADE");
+}
+
+// Migration: backfill manuscripts parent table
+const manuscriptsCount = db.prepare('SELECT COUNT(*) as count FROM manuscripts').get();
+if (manuscriptsCount.count === 0) {
+  const insertGroup = db.prepare('INSERT INTO manuscripts (name, is_active) VALUES (?, 1)');
+  const info = insertGroup.run('Standard');
+  db.prepare('UPDATE manuscript SET manuscript_id = ? WHERE manuscript_id IS NULL').run(info.lastInsertRowid);
+}
+
+// Ensure list_leads table exists before indexing (also created in routes/lists.js)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    color TEXT DEFAULT '#3b82f6',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS list_leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+    lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    sort_order INTEGER DEFAULT 0,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(list_id, lead_id)
+  );
+`);
+
+// Performance indexes
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_notes_lead_id ON notes(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_contacts_lead_id ON contacts(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_call_history_lead_id ON call_history(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_call_history_called_at ON call_history(called_at);
+  CREATE INDEX IF NOT EXISTS idx_list_leads_lead_id ON list_leads(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_list_leads_list_id ON list_leads(list_id);
+  CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+  CREATE INDEX IF NOT EXISTS idx_leads_status_updated ON leads(status, updated_at);
+  CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_call_history_outcome ON call_history(outcome);
+  CREATE INDEX IF NOT EXISTS idx_call_history_date_outcome ON call_history(called_at, outcome);
+  CREATE INDEX IF NOT EXISTS idx_leads_industry ON leads(industry);
+  CREATE INDEX IF NOT EXISTS idx_leads_city ON leads(city);
+`);
 
 // Migration: add unique index on company name (case-insensitive)
 db.exec(`

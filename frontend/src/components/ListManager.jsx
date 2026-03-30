@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
+import SlidePanel from './SlidePanel';
 
 const PRESET_COLORS = [
   '#3b82f6', '#22c55e', '#ef4444', '#a855f7',
@@ -81,28 +82,23 @@ export default function ListManager({ lists, onClose, onSelectList, onListsChang
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="list-manager" onClick={(e) => e.stopPropagation()}>
-        <div className="list-manager__header">
-          <h3>Listor</h3>
-          <button className="modal__close" onClick={onClose}>&times;</button>
-        </div>
+    <SlidePanel open={true} onClose={onClose} title="Listor" width={480}>
+      <div className="p-6 space-y-4">
+        {/* Create button */}
+        {!showForm && (
+          <button
+            className="w-full border-2 border-dashed border-slate-200 rounded-lg py-3 text-sm font-medium text-slate-500 hover:border-accent hover:text-accent transition-colors"
+            onClick={() => { resetForm(); setShowForm(true); }}
+          >
+            + Skapa ny lista
+          </button>
+        )}
 
-        <div className="list-manager__actions">
-          {!showForm && (
-            <button
-              className="btn btn--primary"
-              onClick={() => { resetForm(); setShowForm(true); }}
-            >
-              + Skapa ny lista
-            </button>
-          )}
-        </div>
-
+        {/* Create / Edit form */}
         {showForm && (
-          <form className="list-manager__form" onSubmit={handleSubmit}>
+          <form className="p-5 bg-slate-50 rounded-lg border border-slate-200 space-y-3" onSubmit={handleSubmit}>
             <input
-              className="list-manager__input"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               type="text"
               placeholder="Listnamn"
               value={formName}
@@ -110,59 +106,74 @@ export default function ListManager({ lists, onClose, onSelectList, onListsChang
               autoFocus
             />
             <input
-              className="list-manager__input"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               type="text"
               placeholder="Beskrivning (valfritt)"
               value={formDesc}
               onChange={(e) => setFormDesc(e.target.value)}
             />
-            <div className="list-manager__color-picker">
-              <span className="list-manager__color-label">Färg:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Färg:</span>
               {PRESET_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  className={`list-manager__color-dot ${formColor === c ? 'list-manager__color-dot--active' : ''}`}
+                  className={`h-6 w-6 rounded-full cursor-pointer ring-2 ring-offset-2 transition ${
+                    formColor === c ? 'ring-accent' : 'ring-transparent hover:ring-slate-300'
+                  }`}
                   style={{ backgroundColor: c }}
                   onClick={() => setFormColor(c)}
                 />
               ))}
             </div>
-            <div className="list-manager__form-actions">
-              <button type="button" className="btn btn--secondary" onClick={resetForm}>Avbryt</button>
-              <button type="submit" className="btn btn--primary" disabled={saving || !formName.trim()}>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 transition-colors"
+                onClick={resetForm}
+              >
+                Avbryt
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={saving || !formName.trim()}
+              >
                 {saving ? 'Sparar...' : editingId ? 'Uppdatera' : 'Skapa'}
               </button>
             </div>
           </form>
         )}
 
-        <div className="list-manager__list">
+        {/* List cards */}
+        <div className="space-y-2">
           {(!lists || lists.length === 0) && (
-            <div className="list-manager__empty">Inga listor skapade ännu.</div>
+            <div className="text-center py-10 text-sm text-slate-400">
+              Inga listor skapade ännu.
+            </div>
           )}
           {(lists || []).map((list) => (
             <div
               key={list.id}
-              className="list-manager__card"
+              className="flex items-center gap-3 rounded-lg border border-slate-100 p-4 hover:border-slate-200 hover:shadow-xs transition-all cursor-pointer"
               onClick={() => onSelectList(list.id)}
             >
               <div
-                className="list-manager__card-dot"
+                className="h-3 w-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: list.color || '#6b7280' }}
               />
-              <div className="list-manager__card-body">
-                <div className="list-manager__card-name">{list.name}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-slate-900">{list.name}</div>
                 {list.description && (
-                  <div className="list-manager__card-desc">{list.description}</div>
+                  <div className="text-sm text-slate-500">{list.description}</div>
                 )}
-                <div className="list-manager__card-count">
+                <div className="text-xs text-slate-400">
                   {list.lead_count ?? 0} leads
                 </div>
               </div>
-              <div className="list-manager__card-actions">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <button
-                  className="list-manager__icon-btn"
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors"
                   title="Redigera"
                   onClick={(e) => startEdit(e, list)}
                 >
@@ -172,7 +183,7 @@ export default function ListManager({ lists, onClose, onSelectList, onListsChang
                   </svg>
                 </button>
                 <button
-                  className="list-manager__icon-btn list-manager__icon-btn--danger"
+                  className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                   title="Ta bort"
                   onClick={(e) => handleDelete(e, list.id, list.name)}
                 >
@@ -186,6 +197,6 @@ export default function ListManager({ lists, onClose, onSelectList, onListsChang
           ))}
         </div>
       </div>
-    </div>
+    </SlidePanel>
   );
 }

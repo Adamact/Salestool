@@ -9,13 +9,17 @@ A full-featured cold calling CRM dashboard built for solo sales reps. Manage lea
 - **Call Logging** — Log call outcomes with one click (or keyboard shortcut). 9 outcomes including callback scheduling, with automatic status updates.
 - **Power Dial Mode** — Auto-advance to the next lead after logging a call for uninterrupted calling sessions. Celebration animation when you book a meeting.
 - **Smart Next Lead** — Intelligent lead prioritization: overdue callbacks > new leads > no answer > interested.
-- **Call Scripts & Objection Handling** — Built-in manuscript panel with Swedish cold-calling templates. Floating script overlay for reference during calls.
+- **Callback Queue** — Live sidebar widget showing upcoming and overdue callbacks, auto-refreshes every 30 seconds.
+- **Call Scripts & Objection Handling** — Split-panel manuscript editor with Swedish cold-calling templates (opening, value prop, questions, closing). Floating script overlay for reference during calls.
+- **Timeline View** — Unified chronological feed of notes and call history per lead.
+- **Command Palette** — Quick-access launcher (Ctrl+K) to search and trigger any action: log calls, navigate, import, toggle views, and more.
 - **Lists & Segmentation** — Organize leads into color-coded lists. Multi-select mode for bulk operations.
 - **Calendar** — Week-view calendar with event types (calling blocks, meetings, follow-ups). Optional Google Calendar sync.
 - **Analytics** — Calls per hour, outcome distribution, conversion funnel, average call duration, and daily trends with date range filtering.
+- **Stats Bar** — Real-time session stats displayed at the top of the dashboard.
 - **Data Export** — Export leads as CSV, filtered by status or list.
 - **Database Backup** — Automatic daily backups on server start, keeping the last 7.
-- **Keyboard Shortcuts** — Enter (log call), N (next lead), Arrow keys (navigate leads), 1-9 (select outcome).
+- **Keyboard Shortcuts** — Enter (log call), N (next lead), Arrow keys (navigate leads), 1-9 (select outcome), Ctrl+K (command palette), Escape (close panels).
 
 ## Tech Stack
 
@@ -24,6 +28,7 @@ A full-featured cold calling CRM dashboard built for solo sales reps. Manage lea
 | Frontend | React 18 + Vite |
 | Backend | Node.js + Express |
 | Database | SQLite (better-sqlite3) |
+| Styling | Tailwind CSS + clsx |
 | File Import | xlsx |
 | Calendar Sync | Google Calendar API |
 
@@ -60,10 +65,19 @@ Drop `.csv`, `.xlsx`, or `.xls` files into `backend/data/inbox/` and they will b
 Salestool/
 ├── frontend/                  # React + Vite app
 │   └── src/
-│       ├── components/        # UI components
+│       ├── components/        # UI components (25 components)
+│       │   ├── Sidebar.jsx          # Lead list with search, filters & callback queue
+│       │   ├── FocusPanel.jsx       # Selected lead detail view
+│       │   ├── LogCallModal.jsx     # Call outcome logging
+│       │   ├── CommandPalette.jsx   # Ctrl+K quick-action launcher
+│       │   ├── ManuscriptSplitPanel.jsx  # Script + objection editor
+│       │   ├── TimelinePanel.jsx    # Combined notes & call history
+│       │   ├── CalendarView.jsx     # Week calendar with events
+│       │   ├── AnalyticsDashboard.jsx   # Performance analytics
+│       │   └── ...                  # More components
 │       ├── constants/         # Shared constants (statuses, etc.)
 │       ├── hooks/             # useApi hook
-│       ├── App.jsx            # Main app layout
+│       ├── App.jsx            # Main app layout & state
 │       └── App.css            # Styles
 ├── backend/                   # Express API server
 │   └── src/
@@ -78,6 +92,10 @@ Salestool/
 │       ├── database.js        # SQLite setup, migrations, backup
 │       ├── csvWatcher.js      # Inbox file watcher
 │       └── server.js          # Express server entry point
+├── docs/                      # User guides and documentation
+│   ├── getting-started.md     # Installation & first steps
+│   ├── daily-workflow.md      # Day-to-day calling routines
+│   └── api-reference.md       # Full API documentation
 ├── package.json               # Root scripts (install:all, dev)
 └── CLAUDE.md                  # AI assistant instructions
 ```
@@ -113,6 +131,16 @@ Salestool/
 - The database and backups are gitignored — no data is pushed to version control
 - No external services are required (Google Calendar is optional)
 
+## Documentation
+
+- **[Getting Started](docs/getting-started.md)** — Installation, first import, and feature walkthrough
+- **[Daily Workflow](docs/daily-workflow.md)** — Practical guide for day-to-day calling sessions
+- **[API Reference](docs/api-reference.md)** — Full endpoint documentation with examples
+
+## Codebase
+
+~10,000 lines of code across 25 React components and 6 API route modules.
+
 ## License
 
-MIT
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
