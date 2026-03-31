@@ -56,7 +56,11 @@
       "Bash(ls C:/Users/adama/Documents/Github/Salestool/.env*)",
       "Bash(ls C:/Users/adama/Documents/Github/Salestool/backend/.env*)",
       "Bash(npx vitest:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(taskkill //F //PID 45848)",
+      "Bash(taskkill //F //PID 23348)",
+      "Bash(taskkill //F //PID 26392)",
+      "Bash(taskkill //F //PID 11980)"
     ]
   }
 }

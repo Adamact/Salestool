@@ -1,0 +1,200 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1774936560696,
+  "projectRoot": "C:\\Users\\adama\\Documents\\Github\\Salestool",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "install:all": "cd backend && npm install && cd ../frontend && npm install",
+      "dev:backend": "cd backend && node src/server.js",
+      "dev:frontend": "cd frontend && npx vite",
+      "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+      "start": "npm run dev",
+      "build": "cd frontend && npm run build",
+      "start:prod": "cd backend && node src/server.js",
+      "lint": "eslint .",
+      "lint:fix": "eslint . --fix",
+      "format": "prettier --write \"**/*.{js,jsx,json,css,md}\""
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1774936560659,
+      "keyFiles": [
+        "import-csv.js",
+        "import-leads.js",
+        "package-lock.json",
+        "package.json"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 3,
+      "lastAccessed": 1774936560660,
+      "keyFiles": [
+        "api-reference.md",
+        "daily-workflow.md",
+        "getting-started.md"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1774936560670,
+      "keyFiles": [
+        "index.html",
+        "package-lock.json",
+        "package.json",
+        "vite.config.js"
+      ]
+    },
+    "backend\\data": {
+      "path": "backend\\data",
+      "purpose": "Data files",
+      "fileCount": 6,
+      "lastAccessed": 1774936560671,
+      "keyFiles": [
+        "google-credentials.json",
+        "leads.tsv",
+        "leads2.tsv"
+      ]
+    },
+    "backend\\node_modules": {
+      "path": "backend\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1774936560672,
+      "keyFiles": []
+    },
+    "backend\\src": {
+      "path": "backend\\src",
+      "purpose": "Source code",
+      "fileCount": 3,
+      "lastAccessed": 1774936560673,
+      "keyFiles": [
+        "csvWatcher.js",
+        "database.js",
+        "server.js"
+      ]
+    },
+    "frontend\\dist": {
+      "path": "frontend\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1774936560673,
+      "keyFiles": [
+        "index.html"
+      ]
+    },
+    "frontend\\node_modules": {
+      "path": "frontend\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1774936560674,
+      "keyFiles": []
+    },
+    "frontend\\src": {
+      "path": "frontend\\src",
+      "purpose": "Source code",
+      "fileCount": 3,
+      "lastAccessed": 1774936560675,
+      "keyFiles": [
+        "App.css",
+        "App.jsx",
+        "main.jsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "frontend\\src\\components\\ManuscriptSplitPanel.jsx",
+      "accessCount": 17,
+      "lastAccessed": 1774938184526,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\components\\ObjectionsPanel.jsx",
+      "accessCount": 13,
+      "lastAccessed": 1774938168251,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\components\\FloatingScript.jsx",
+      "accessCount": 6,
+      "lastAccessed": 1774937957666,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src\\App.css",
+      "accessCount": 2,
+      "lastAccessed": 1774937757951,
+      "type": "directory"
+    },
+    {
+      "path": "frontend\\vite.config.js",
+      "accessCount": 1,
+      "lastAccessed": 1774937003750,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\index.html",
+      "accessCount": 1,
+      "lastAccessed": 1774937004221,
+      "type": "file"
+    },
+    {
+      "path": "frontend\\src",
+      "accessCount": 1,
+      "lastAccessed": 1774937701739,
+      "type": "directory"
+    },
+    {
+      "path": "frontend\\src\\components\\ScriptPanel.jsx",
+      "accessCount": 1,
+      "lastAccessed": 1774937734998,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

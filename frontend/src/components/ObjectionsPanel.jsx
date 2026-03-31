@@ -7,16 +7,35 @@ export default function ObjectionsPanel({ manuscript, onManuscriptChange }) {
   const api = useApi();
   const objections = (manuscript || []).filter((s) => s.section_type === 'objection');
 
-  const [openId, setOpenId] = useState(null);
+  const [closedIds, setClosedIds] = useState(new Set());
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const allOpen = objections.length > 0 && objections.every((o) => !closedIds.has(o.id));
+
+  const toggleAll = () => {
+    if (allOpen) {
+      setClosedIds(new Set(objections.map((o) => o.id)));
+    } else {
+      setClosedIds(new Set());
+    }
+  };
+
+  const toggleOne = (id) => {
+    setClosedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleEdit = (e, obj) => {
     e.stopPropagation();
     setEditingId(obj.id);
-    setOpenId(obj.id);
+    setClosedIds((prev) => { const next = new Set(prev); next.delete(obj.id); return next; });
     setForm({ title: obj.title, content: obj.content });
     setShowAdd(false);
   };
@@ -57,7 +76,7 @@ export default function ObjectionsPanel({ manuscript, onManuscriptChange }) {
     try {
       await api.deleteManuscript(id);
       if (editingId === id) handleCancel();
-      if (openId === id) setOpenId(null);
+      setClosedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       if (onManuscriptChange) onManuscriptChange();
     } catch (err) {
       console.error('Failed to delete objection:', err);
@@ -72,15 +91,21 @@ export default function ObjectionsPanel({ manuscript, onManuscriptChange }) {
         <p className="objections-panel__empty">Inga invändningar har lagts till ännu.</p>
       )}
 
+      {objections.length > 1 && (
+        <button className="btn btn--secondary btn--sm" onClick={toggleAll} style={{ marginBottom: '0.5rem' }}>
+          {allOpen ? 'Dölj alla' : 'Visa alla'}
+        </button>
+      )}
+
       {objections.map((obj) => {
-        const isOpen = openId === obj.id;
+        const isOpen = !closedIds.has(obj.id);
         const isEditing = editingId === obj.id;
 
         return (
           <div key={obj.id} className={`objection-card ${isOpen ? 'objection-card--open' : ''}`}>
             <button
               className="objection-card__header"
-              onClick={() => { if (!isEditing) setOpenId(isOpen ? null : obj.id); }}
+              onClick={() => { if (!isEditing) toggleOne(obj.id); }}
               aria-expanded={isOpen}
             >
               <span className="objection-card__title">{isEditing ? form.title || obj.title : obj.title}</span>

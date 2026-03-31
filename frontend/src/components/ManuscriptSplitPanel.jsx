@@ -84,7 +84,7 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
       )}
 
       {sections.map((section) => (
-        <div key={section.id} className="rounded-lg border border-slate-100 p-4 mb-3">
+        <div key={section.id} className="rounded-lg border border-slate-200 p-4 mb-4 shadow-sm">
           {editingId === section.id ? (
             <div className="space-y-3">
               <input
@@ -113,7 +113,7 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
               <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/10 text-accent px-2 py-0.5 rounded-full w-fit">{getTypeLabel(section.section_type)}</span>
-                  {section.title && <h4 className="text-sm font-medium text-slate-900">{section.title}</h4>}
+                  {section.title && <h4 className="text-base font-medium text-slate-900">{section.title}</h4>}
                 </div>
                 <div className="flex gap-1">
                   <button className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100" onClick={() => handleEdit(section)} title="Redigera">
@@ -130,7 +130,7 @@ function ScriptSide({ manuscript, onManuscriptChange }) {
                   </button>
                 </div>
               </div>
-              <div className="text-sm text-slate-600 whitespace-pre-wrap mt-2">{section.content}</div>
+              <div className="text-base text-slate-600 whitespace-pre-wrap mt-2 leading-relaxed">{section.content}</div>
             </>
           )}
         </div>
@@ -187,16 +187,25 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
   const api = useApi();
   const objections = (manuscript || []).filter((s) => s.section_type === 'objection');
 
-  const [openId, setOpenId] = useState(null);
+  const [closedIds, setClosedIds] = useState(new Set());
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const toggleOne = (id) => {
+    setClosedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleEdit = (e, obj) => {
     e.stopPropagation();
     setEditingId(obj.id);
-    setOpenId(obj.id);
+    setClosedIds((prev) => { const next = new Set(prev); next.delete(obj.id); return next; });
     setForm({ title: obj.title, content: obj.content });
     setShowAdd(false);
   };
@@ -237,7 +246,7 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
     try {
       await api.deleteManuscript(id);
       if (editingId === id) handleCancel();
-      if (openId === id) setOpenId(null);
+      setClosedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       if (onManuscriptChange) onManuscriptChange();
     } catch (err) {
       console.error('Failed to delete objection:', err);
@@ -255,17 +264,17 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
       )}
 
       {objections.map((obj) => {
-        const isOpen = openId === obj.id;
+        const isOpen = !closedIds.has(obj.id);
         const isEditing = editingId === obj.id;
 
         return (
-          <div key={obj.id} className="rounded-lg border border-slate-100 mb-2">
+          <div key={obj.id} className="rounded-lg border border-slate-200 mb-3 shadow-sm">
             <button
               className="w-full flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-slate-50 text-left"
-              onClick={() => { if (!isEditing) setOpenId(isOpen ? null : obj.id); }}
+              onClick={() => { if (!isEditing) toggleOne(obj.id); }}
               aria-expanded={isOpen}
             >
-              <span className="text-sm font-medium text-slate-900">{isEditing ? form.title || obj.title : obj.title}</span>
+              <span className="text-base font-medium text-slate-900">{isEditing ? form.title || obj.title : obj.title}</span>
               <span className="flex items-center gap-1">
                 {isOpen && !isEditing && (
                   <>
@@ -313,7 +322,7 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
                   </div>
                 </div>
               ) : (
-                <div className="px-4 pb-3 text-sm text-slate-600 whitespace-pre-wrap">{obj.content}</div>
+                <div className="px-4 pb-3 text-base text-slate-600 whitespace-pre-wrap leading-relaxed">{obj.content}</div>
               )
             )}
           </div>
@@ -321,7 +330,7 @@ function ObjectionsSide({ manuscript, onManuscriptChange }) {
       })}
 
       {showAdd && (
-        <div className="rounded-lg border border-slate-100 mb-2">
+        <div className="rounded-lg border border-slate-200 mb-3 shadow-sm">
           <div className="px-4 py-3">
             <div className="space-y-3">
               <input

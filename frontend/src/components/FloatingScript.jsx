@@ -41,13 +41,13 @@ export default function FloatingScript({ manuscript, onClose, manuscriptGroups, 
         {scripts.length > 0 && (
           <div>
             {scripts.map((s) => (
-              <div key={s.id} className="mb-2 rounded-lg border border-slate-100">
-                <div className="flex justify-between items-center px-3 py-2 cursor-pointer text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => toggle(s.id)}>
+              <div key={s.id} className="mb-3 rounded-lg border border-slate-200 shadow-sm">
+                <div className="flex justify-between items-center px-3 py-2 cursor-pointer text-base font-medium text-slate-700 hover:bg-slate-50" onClick={() => toggle(s.id)}>
                   {s.title}
                   <span className="text-slate-400 text-xs">{collapsed[s.id] ? '\u25BC' : '\u25B2'}</span>
                 </div>
                 {!collapsed[s.id] && (
-                  <div className="px-3 pb-3 text-sm text-slate-600 whitespace-pre-wrap">{s.content}</div>
+                  <div className="px-3 pb-3 text-base text-slate-600 whitespace-pre-wrap leading-relaxed">{s.content}</div>
                 )}
               </div>
             ))}
@@ -55,15 +55,16 @@ export default function FloatingScript({ manuscript, onClose, manuscriptGroups, 
         )}
         {objections.length > 0 && (
           <div>
+            <div className="border-t border-slate-200 my-3"></div>
             <div className="text-xs font-semibold uppercase text-slate-500 mb-2">Invändningar</div>
             {objections.map((s) => (
-              <div key={s.id} className="mb-2 rounded-lg border border-slate-100">
-                <div className="flex justify-between items-center px-3 py-2 cursor-pointer text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => toggle(s.id)}>
+              <div key={s.id} className="mb-3 rounded-lg border border-slate-200 shadow-sm">
+                <div className="flex justify-between items-center px-3 py-2 cursor-pointer text-base font-medium text-slate-700 hover:bg-slate-50" onClick={() => toggle(s.id)}>
                   {s.title}
                   <span className="text-slate-400 text-xs">{collapsed[s.id] ? '\u25BC' : '\u25B2'}</span>
                 </div>
                 {!collapsed[s.id] && (
-                  <div className="px-3 pb-3 text-sm text-slate-600 whitespace-pre-wrap">{s.content}</div>
+                  <div className="px-3 pb-3 text-base text-slate-600 whitespace-pre-wrap leading-relaxed">{s.content}</div>
                 )}
               </div>
             ))}
